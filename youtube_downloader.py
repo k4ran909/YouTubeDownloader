@@ -74,6 +74,16 @@ def extract_playlist_id(url):
     return None
 
 
+def is_radio_playlist(playlist_id):
+    """
+    Check if playlist is a Radio/Mix (auto-generated, non-downloadable as playlist).
+    Radio playlists start with 'RD' and are dynamically generated for each user.
+    """
+    if playlist_id:
+        return playlist_id.startswith('RD')
+    return False
+
+
 def is_playlist_url(url):
     """Check if URL contains a playlist"""
     return 'list=' in url
@@ -384,32 +394,39 @@ def main():
     playlist_items = None
     
     if playlist_id and video_id:
-        # URL has both video and playlist - ask user what they want
-        print(f"\n[INFO] This URL contains both a video and a playlist.")
-        print("=" * 70)
-        print("What would you like to download?")
-        print("=" * 70)
-        print("1. Single Video only")
-        print("2. Entire Playlist")
-        print("3. Select specific videos from playlist")
-        print("=" * 70)
-        
-        choice = input("\nSelect option (1-3) [default: 1]: ").strip()
-        
-        if choice == '2':
-            download_playlist = True
-            url = get_playlist_url(playlist_id)
-            print(f"\n[INFO] Will download entire playlist")
-        elif choice == '3':
-            download_playlist = True
-            url = get_playlist_url(playlist_id)
-            playlist_items = input("\nEnter video numbers to download (e.g., 1,3,5-10): ").strip()
-            if not playlist_items:
-                playlist_items = None
-            print(f"\n[INFO] Will download selected videos from playlist")
-        else:
+        # Check if it's a Radio/Mix playlist (cannot be downloaded as playlist)
+        if is_radio_playlist(playlist_id):
+            print(f"\n[WARNING] This is a Radio/Mix playlist (auto-generated).")
+            print("          Radio playlists cannot be downloaded as playlists.")
+            print("          Downloading single video only...")
             url = get_clean_video_url(video_id)
-            print(f"\n[INFO] Will download single video")
+        else:
+            # URL has both video and playlist - ask user what they want
+            print(f"\n[INFO] This URL contains both a video and a playlist.")
+            print("=" * 70)
+            print("What would you like to download?")
+            print("=" * 70)
+            print("1. Single Video only")
+            print("2. Entire Playlist")
+            print("3. Select specific videos from playlist")
+            print("=" * 70)
+            
+            choice = input("\nSelect option (1-3) [default: 1]: ").strip()
+            
+            if choice == '2':
+                download_playlist = True
+                url = get_playlist_url(playlist_id)
+                print(f"\n[INFO] Will download entire playlist")
+            elif choice == '3':
+                download_playlist = True
+                url = get_playlist_url(playlist_id)
+                playlist_items = input("\nEnter video numbers to download (e.g., 1,3,5-10): ").strip()
+                if not playlist_items:
+                    playlist_items = None
+                print(f"\n[INFO] Will download selected videos from playlist")
+            else:
+                url = get_clean_video_url(video_id)
+                print(f"\n[INFO] Will download single video")
     
     elif playlist_id and not video_id:
         # Pure playlist URL
