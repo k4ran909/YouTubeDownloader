@@ -178,7 +178,16 @@ class YouTubeDownloaderApp(ctk.CTk):
         self.grid_rowconfigure(6, weight=1) 
 
     def load_config(self):
-        self.config_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
+        # Determine correct path for config file
+        if getattr(sys, 'frozen', False):
+            # If running as exe, store config in the same path as the exe
+            application_path = os.path.dirname(sys.executable)
+        else:
+            # If running as script, store in the script directory
+            application_path = os.path.dirname(os.path.abspath(__file__))
+            
+        self.config_file = os.path.join(application_path, 'config.json')
+
         if os.path.exists(self.config_file):
             try:
                 import json
@@ -204,10 +213,18 @@ class YouTubeDownloaderApp(ctk.CTk):
                          # Browser selected
                          pass
             except Exception as e:
-                print(f"Failed to load config: {e}")
+                self.log_message(f"[Config] Error loading config: {e}")
 
     def save_config(self):
         try:
+            # Ensure path is set (in case save is called before load)
+            if not hasattr(self, 'config_file'):
+                if getattr(sys, 'frozen', False):
+                    application_path = os.path.dirname(sys.executable)
+                else:
+                    application_path = os.path.dirname(os.path.abspath(__file__))
+                self.config_file = os.path.join(application_path, 'config.json')
+
             import json
             data = {
                 'cookie_source': self.cookie_source_var.get(),
@@ -216,7 +233,7 @@ class YouTubeDownloaderApp(ctk.CTk):
             with open(self.config_file, 'w') as f:
                 json.dump(data, f)
         except Exception as e:
-            print(f"Failed to save config: {e}") 
+            self.log_message(f"[Config] Error saving config: {e}") 
 
     def check_ffmpeg(self):
         if not shutil.which('ffmpeg'):
