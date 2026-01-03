@@ -1,0 +1,21 @@
+# Netscape HTTP Cookie File
+# This is a sample file. Replace this with your actual cookies.
+# 
+# HOW TO EXPORT COOKIES:
+# 
+# 1. Install a browser extension:
+#    - Chrome: "Get cookies.txt LOCALLY" 
+#      https://chrome.google.com/webstore/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc
+#    - Firefox: "cookies.txt"
+#      https://addons.mozilla.org/en-US/firefox/addon/cookies-txt/
+#
+# 2. Go to https://youtube.com and log in to your account
+#
+# 3. Click the extension icon and export cookies
+#
+# 4. Replace this file's contents with the exported cookies
+#
+# The format should look like:
+# .youtube.com	TRUE	/	TRUE	1234567890	COOKIE_NAME	cookie_value
+#
+# NOTE: Do NOT share your cookies.txt file as it contains your login session!

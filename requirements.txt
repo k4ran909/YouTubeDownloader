@@ -1,0 +1,2 @@
+# YouTube Downloader Dependencies
+yt-dlp>=2023.1.1
