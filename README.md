@@ -24,9 +24,6 @@ Just download `YT-Downloader.exe` and run it! (FFmpeg required for MP3)
 - ✅ **Cookie Support** - For age-restricted content
 - ✅ **VPS Friendly** - CLI version optimized for servers
 
-## Screenshots
-
-*(Add screenshot here)*
 
 ## Installation (Source Code)
 
