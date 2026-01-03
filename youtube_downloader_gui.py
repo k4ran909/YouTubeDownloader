@@ -132,10 +132,6 @@ class YouTubeDownloaderApp(ctk.CTk):
         self.browse_btn = ctk.CTkButton(self.auth_frame, text="Browse...", width=80, command=self.browse_cookie_file)
         self.auth_path_label = ctk.CTkLabel(self.auth_frame, text="", text_color="gray")
         
-        # DEBUG: Manual Save Button
-        self.save_btn = ctk.CTkButton(self.auth_frame, text="Save Config", width=80, fg_color="green", command=self.save_config)
-        self.save_btn.pack(side="right", padx=10)
-
         # === Download Button & Status ===
         self.action_frame = ctk.CTkFrame(self, fg_color="transparent")
         self.action_frame.grid(row=4, column=0, padx=20, pady=20, sticky="ew")
