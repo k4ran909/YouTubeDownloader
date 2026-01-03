@@ -326,8 +326,18 @@ class YouTubeDownloaderApp(ctk.CTk):
             messagebox.showinfo("Success", "Download Completed Successfully!")
 
         except Exception as e:
-            self.log_message(f"[Error] {str(e)}")
-            messagebox.showerror("Error", f"Download Failed:\n{str(e)}")
+            error_msg = str(e)
+            self.log_message(f"[Error] {error_msg}")
+            
+            # Check for specific browser cookie error
+            if "Could not copy" in error_msg and "cookie database" in error_msg:
+                messagebox.showerror("Browser Error", 
+                    f"Could not access {self.cookie_source_var.get()} cookies.\n\n"
+                    "Please CLOSE your browser completely and try again.\n"
+                    "(The database is locked while the browser is open)"
+                )
+            else:
+                messagebox.showerror("Error", f"Download Failed:\n{error_msg}")
         
         finally:
             self.download_btn.configure(state="normal", text="Start Download")
