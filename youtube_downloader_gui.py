@@ -131,6 +131,10 @@ class YouTubeDownloaderApp(ctk.CTk):
 
         self.browse_btn = ctk.CTkButton(self.auth_frame, text="Browse...", width=80, command=self.browse_cookie_file)
         self.auth_path_label = ctk.CTkLabel(self.auth_frame, text="", text_color="gray")
+        
+        # DEBUG: Manual Save Button
+        self.save_btn = ctk.CTkButton(self.auth_frame, text="Save Config", width=80, fg_color="green", command=self.save_config)
+        self.save_btn.pack(side="right", padx=10)
 
         # === Download Button & Status ===
         self.action_frame = ctk.CTkFrame(self, fg_color="transparent")
@@ -303,28 +307,37 @@ class YouTubeDownloaderApp(ctk.CTk):
             self.grid_rowconfigure(7, weight=0)
 
     def on_cookie_source_change(self, choice):
-        if choice == "Select File...":
-            self.browse_btn.pack(side="left", padx=5)
-            self.auth_path_label.pack(side="left", padx=5)
-            if not self.auth_path_label.cget("text"):
-                self.browse_cookie_file()
-        else:
-            self.browse_btn.pack_forget()
-            self.auth_path_label.pack_forget()
-            self.custom_cookie_file = None
-        
-        self.save_config()
+        try:
+            self.log_message(f"[Debug] Cookie source changed to: {choice}")
+            if choice == "Select File...":
+                self.browse_btn.pack(side="left", padx=5)
+                self.auth_path_label.pack(side="left", padx=5)
+                if not self.auth_path_label.cget("text"):
+                    self.browse_cookie_file()
+            else:
+                self.browse_btn.pack_forget()
+                self.auth_path_label.pack_forget()
+                self.custom_cookie_file = None
+            
+            self.save_config()
+        except Exception as e:
+            self.log_message(f"[CRITICAL ERROR] on_cookie_source_change failed: {e}")
+            messagebox.showerror("Error", f"Failed to change source: {e}")
 
     def browse_cookie_file(self):
-        filename = filedialog.askopenfilename(title="Select Cookies File", filetypes=[("Text files", "*.txt"), ("All files", "*.*")])
-        if filename:
-            self.custom_cookie_file = filename
-            basename = os.path.basename(filename)
-            self.auth_path_label.configure(text=basename if len(basename) < 20 else basename[:17]+"...")
-            self.save_config()
-        elif not self.custom_cookie_file:
-            self.cookie_source_var.set("None")
-            self.on_cookie_source_change("None")
+        try:
+            filename = filedialog.askopenfilename(title="Select Cookies File", filetypes=[("Text files", "*.txt"), ("All files", "*.*")])
+            if filename:
+                self.custom_cookie_file = filename
+                basename = os.path.basename(filename)
+                self.auth_path_label.configure(text=basename if len(basename) < 20 else basename[:17]+"...")
+                self.save_config()
+            elif not self.custom_cookie_file:
+                self.cookie_source_var.set("None")
+                self.on_cookie_source_change("None")
+        except Exception as e:
+             self.log_message(f"[CRITICAL ERROR] browse_cookie_file failed: {e}")
+             messagebox.showerror("Error", f"Failed to browse file: {e}")
 
     def start_download_thread(self):
         url = self.url_var.get().strip()
