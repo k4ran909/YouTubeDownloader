@@ -12,7 +12,7 @@ A powerful YouTube downloader that supports both **video (MP4)** and **audio (MP
 
 **[Download Latest Version (v1.0)](https://github.com/shohan-001/youtube-downloader/releases)**
 
-Just download `YouTubeDownloader.exe` and run it! (FFmpeg required for MP3)
+Just download `YT-Downloader.exe` and run it! (FFmpeg required for MP3)
 
 ## Features
 

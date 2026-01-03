@@ -18,7 +18,7 @@ IF EXIST "*.spec" DEL /Q "*.spec"
 :: Build EXE
 ECHO [INFO] Building executable... This may take a minute.
 ECHO.
-python -m PyInstaller --noconfirm --onefile --windowed --name "YouTubeDownloader" --icon="icon.ico" --collect-all customtkinter youtube_downloader_gui.py
+python -m PyInstaller --noconfirm --onefile --windowed --name "YT-Downloader" --icon="icon.ico" --collect-all customtkinter youtube_downloader_gui.py
 
 IF %ERRORLEVEL% NEQ 0 (
     ECHO.
@@ -32,6 +32,6 @@ ECHO ======================================================================
 ECHO [SUCCESS] Build Complete!
 ECHO.
 ECHO Your new executable is located in the "dist" folder:
-ECHO %~dp0dist\YouTubeDownloader.exe
+ECHO %~dp0dist\YT-Downloader.exe
 ECHO ======================================================================
 PAUSE
