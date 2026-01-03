@@ -13,4 +13,4 @@ def convert_to_ico(input_path, output_path):
         sys.exit(1)
 
 if __name__ == "__main__":
-    convert_to_ico("icon_bgremoved.png", "icon.ico")
+    convert_to_ico("icon_bgremoved2.png", "icon.ico")
