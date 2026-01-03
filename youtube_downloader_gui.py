@@ -122,9 +122,22 @@ class YouTubeDownloaderApp(ctk.CTk):
         self.download_btn = ctk.CTkButton(self.action_frame, text="Start Download", font=ctk.CTkFont(size=15, weight="bold"), height=40, command=self.start_download_thread)
         self.download_btn.pack(fill="x")
         
+        # === Stats Frame ===
+        self.stats_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.stats_frame.grid(row=5, column=0, padx=20, pady=(0, 5), sticky="ew")
+        
+        self.stat_speed = ctk.CTkLabel(self.stats_frame, text="Speed: -", font=("Consolas", 12))
+        self.stat_speed.pack(side="left", padx=10, expand=True)
+        
+        self.stat_eta = ctk.CTkLabel(self.stats_frame, text="ETA: -", font=("Consolas", 12))
+        self.stat_eta.pack(side="left", padx=10, expand=True)
+        
+        self.stat_size = ctk.CTkLabel(self.stats_frame, text="Size: -", font=("Consolas", 12))
+        self.stat_size.pack(side="left", padx=10, expand=True)
+
         # === Console / Log ===
         self.log_frame = ctk.CTkFrame(self)
-        self.log_frame.grid(row=5, column=0, padx=20, pady=(0, 20), sticky="nsew")
+        self.log_frame.grid(row=6, column=0, padx=20, pady=(0, 20), sticky="nsew")
         
         self.log_textbox = ctk.CTkTextbox(self.log_frame, font=("Consolas", 12))
         self.log_textbox.pack(fill="both", expand=True, padx=5, pady=5)
@@ -132,7 +145,7 @@ class YouTubeDownloaderApp(ctk.CTk):
 
         # === Progress Bar ===
         self.progress_bar = ctk.CTkProgressBar(self)
-        self.progress_bar.grid(row=6, column=0, padx=20, pady=(0, 20), sticky="ew")
+        self.progress_bar.grid(row=7, column=0, padx=20, pady=(0, 20), sticky="ew")
         self.progress_bar.set(0)
 
         # Bind URL change to detect playlist
@@ -141,47 +154,23 @@ class YouTubeDownloaderApp(ctk.CTk):
         # Initial Auth State
         self.custom_cookie_file = None
 
-    def check_ffmpeg(self):
-        if not shutil.which('ffmpeg'):
-            self.log_message("[WARNING] FFmpeg not found! Audio conversion may fail.")
-            self.log_message("Please install FFmpeg and add it to your PATH.")
-        else:
-            self.log_message("[System] FFmpeg detected.")
+        # Row configuration
+        self.grid_rowconfigure(6, weight=1) 
 
-    def log_message(self, message):
-        self.log_textbox.configure(state="normal")
-        self.log_textbox.insert("end", message + "\n")
-        self.log_textbox.see("end")
-        self.log_textbox.configure(state="disabled")
-
-    def update_quality_options(self):
-        mode = self.mode_var.get()
-        if mode == "video":
-            values = ["Best", "2160p", "1440p", "1080p", "720p", "480p", "360p"]
-            self.quality_var.set("Best")
-        else:
-            values = ["320 kbps", "256 kbps", "192 kbps", "128 kbps", "96 kbps", "64 kbps"]
-            self.quality_var.set("320 kbps")
-        
-        self.quality_menu.configure(values=values)
+    # ... (existing methods) ...
 
     def on_url_change(self, *args):
         url = self.url_var.get()
-        # Playlist UI logic...
-        # Using grid_forget/grid to show/hide playlist options
-        # We need to make sure auth_frame doesn't conflict. 
-        # Auth frame is row 3. URL is row 1. Options is row 2.
-        # Playlist frame was row 3. Let's move Auth to row 4, Action to 5, Log to 6, Progress to 7.
         
         if 'list=' in url and not 'start_radio=' in url:
-            # Show playlist options at row 3
+            # Shift for Playlist UI
             self.playlist_frame.grid(row=3, column=0, padx=20, pady=5, sticky="ew")
-            # Push Auth down
             self.auth_frame.grid(row=4, column=0, padx=20, pady=5, sticky="ew")
             self.action_frame.grid(row=5, column=0, padx=20, pady=20, sticky="ew")
-            self.log_frame.grid(row=6, column=0, padx=20, pady=(0, 20), sticky="nsew")
-            self.progress_bar.grid(row=7, column=0, padx=20, pady=(0, 20), sticky="ew")
-
+            self.stats_frame.grid(row=6, column=0, padx=20, pady=(0, 5), sticky="ew")
+            self.log_frame.grid(row=7, column=0, padx=20, pady=(0, 20), sticky="nsew")
+            self.progress_bar.grid(row=8, column=0, padx=20, pady=(0, 20), sticky="ew")
+            
             # Check for Radio playlist
             if 'list=RD' in url:
                 self.dl_playlist_btn.configure(state="disabled", text="Playlist (Radio - Not Downloadable)")
@@ -189,21 +178,61 @@ class YouTubeDownloaderApp(ctk.CTk):
             else:
                 self.dl_playlist_btn.configure(state="normal", text="Download Entire Playlist")
             
-            # Update row weights
-            self.grid_rowconfigure(5, weight=0) # Action frame (no expansion)
-            self.grid_rowconfigure(6, weight=1) # Log frame (expand)
+            self.grid_rowconfigure(6, weight=0)
+            self.grid_rowconfigure(7, weight=1) # Log frame expanvsion
             
         else:
             self.playlist_frame.grid_forget()
-            # Move everything back up
+            # Standard UI
             self.auth_frame.grid(row=3, column=0, padx=20, pady=5, sticky="ew")
             self.action_frame.grid(row=4, column=0, padx=20, pady=20, sticky="ew")
-            self.log_frame.grid(row=5, column=0, padx=20, pady=(0, 20), sticky="nsew")
-            self.progress_bar.grid(row=6, column=0, padx=20, pady=(0, 20), sticky="ew")
+            self.stats_frame.grid(row=5, column=0, padx=20, pady=(0, 5), sticky="ew")
+            self.log_frame.grid(row=6, column=0, padx=20, pady=(0, 20), sticky="nsew")
+            self.progress_bar.grid(row=7, column=0, padx=20, pady=(0, 20), sticky="ew")
             
-            # Reset row weights
-            self.grid_rowconfigure(5, weight=1) # Log frame (expand)
-            self.grid_rowconfigure(6, weight=0)
+            self.grid_rowconfigure(6, weight=1) # Log frame expansion
+            self.grid_rowconfigure(7, weight=0)
+
+    # ... (existing methods) ...
+
+    def progress_hook(self, d):
+        if d['status'] == 'downloading':
+            try:
+                # Update progress bar
+                if 'total_bytes' in d:
+                    p = d['downloaded_bytes'] / d['total_bytes']
+                    self.progress_bar.set(p)
+                elif 'total_bytes_estimate' in d:
+                    p = d['downloaded_bytes'] / d['total_bytes_estimate']
+                    self.progress_bar.set(p)
+
+                # Update stats labels
+                speed = d.get('_speed_str', 'N/A')
+                eta = d.get('_eta_str', 'N/A')
+                
+                # Size formatting
+                total_bytes = d.get('total_bytes') or d.get('total_bytes_estimate')
+                if total_bytes:
+                    size_mb = total_bytes / 1024 / 1024
+                    size_str = f"{size_mb:.1f} MiB"
+                else:
+                    size_str = "N/A"
+
+                self.stat_speed.configure(text=f"Speed: {speed}")
+                self.stat_eta.configure(text=f"ETA: {eta}")
+                self.stat_size.configure(text=f"Size: {size_str}")
+
+                self.progress_bar.configure(mode="determinate")
+            except Exception as e:
+                # print(e)
+                pass
+        
+        elif d['status'] == 'finished':
+            self.log_message("Download finished. Processing/Converting...")
+            self.progress_bar.configure(mode="indeterminate")
+            self.progress_bar.start()
+            self.stat_speed.configure(text="Speed: -")
+            self.stat_eta.configure(text="ETA: Complete")
 
     def on_cookie_source_change(self, choice):
         if choice == "Select File...":
