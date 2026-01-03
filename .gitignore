@@ -9,7 +9,7 @@
 *.wav
 *.ogg
 
-# Cookies file (contains sensitive data)
+# Cookies file
 cookies.txt
 
 # Python
@@ -33,6 +33,7 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+*.spec
 
 # Virtual environment
 venv/
@@ -40,17 +41,11 @@ ENV/
 env/
 .venv/
 
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
-*~
-
-# OS
+# AC
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# Logs
-*.log
+# IDE
+.idea/
+.vscode/

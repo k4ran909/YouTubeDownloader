@@ -1,22 +1,36 @@
 # YouTube Video/Audio Downloader
 
-A powerful YouTube downloader that supports both **video (MP4)** and **audio (MP3)** downloads with quality selection options. Supports single videos and **entire playlists**. Built with Python and yt-dlp.
+A powerful YouTube downloader that supports both **video (MP4)** and **audio (MP3)** downloads. Available as a **modern GUI application** and a command-line tool.
 
-![Python](https://img.shields.io/badge/Python-3.7+-blue.svg)
-![License](https://img.shields.io/badge/License-MIT-green.svg)
-![yt-dlp](https://img.shields.io/badge/yt--dlp-latest-red.svg)
+<div align="center">
+  <img src="https://img.shields.io/badge/GUI-CustomTkinter-blue.svg" alt="GUI">
+  <img src="https://img.shields.io/badge/Python-3.7+-green.svg" alt="Python">
+  <img src="https://img.shields.io/badge/License-MIT-orange.svg" alt="License">
+</div>
+
+## 📥 Download (No Python Required)
+
+**[Download Latest Version (v1.0)](https://github.com/shohan-001/youtube-downloader/releases)**
+
+Just download `YouTubeDownloader.exe` and run it! (FFmpeg required for MP3)
 
 ## Features
 
-- ✅ **Download Videos** in MP4 format with quality options (4K, 2K, 1080p, 720p, 480p, 360p)
-- ✅ **Download Audio** in MP3 format with bitrate options (320kbps, 256kbps, 192kbps, 128kbps, 96kbps, 64kbps)
-- ✅ **Playlist Support** - Download entire playlists or select specific videos
-- ✅ **Smart URL Handling** - Automatically detects playlist URLs and gives you options
-- ✅ **Organized Downloads** - Playlist videos are saved in folders named after the playlist
-- ✅ **Cookie Support** for age-restricted and authenticated content
-- ✅ **VPS Friendly** with built-in anti-detection features
-- ✅ **Progress Display** with download speed and percentage
-- ✅ **Cross-Platform** works on Windows, Linux, and macOS
+- 🖥️ **Modern GUI** - Easy to use interface with dark mode
+- ✅ **Download Videos** in MP4 format (4K, 2K, 1080p, etc.)
+- ✅ **Download Audio** in MP3 format (320kbps, 256kbps, etc.)
+- ✅ **Playlist Support** - Download entire playlists or single videos
+- ✅ **Smart URL Handling** - Auto-detects complex URLs
+- ✅ **Cookie Support** - For age-restricted content
+- ✅ **VPS Friendly** - CLI version optimized for servers
+
+## Screenshots
+
+*(Add screenshot here)*
+
+## Installation (Source Code)
+
+If you prefer to run from source:
 
 ## Supported URL Formats
 
@@ -99,8 +113,12 @@ Cookies are required for:
 
 ## Usage
 
-### Basic Usage
+### Running the GUI
+```bash
+python youtube_downloader_gui.py
+```
 
+### Running the CLI (Command Line)
 ```bash
 python youtube_downloader.py
 ```
