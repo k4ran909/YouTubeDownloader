@@ -170,9 +170,53 @@ class YouTubeDownloaderApp(ctk.CTk):
         
         # Initial Auth State
         self.custom_cookie_file = None
+        
+        # Load Config
+        self.load_config()
 
         # Row configuration
         self.grid_rowconfigure(6, weight=1) 
+
+    def load_config(self):
+        self.config_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
+        if os.path.exists(self.config_file):
+            try:
+                import json
+                with open(self.config_file, 'r') as f:
+                    data = json.load(f)
+                    
+                saved_source = data.get('cookie_source', 'None')
+                saved_file = data.get('cookie_file', '')
+                
+                # Restore Cookie Source
+                if saved_source:
+                    self.cookie_source_var.set(saved_source)
+                    # Trigger UI update
+                    if saved_source == "Select File...":
+                        if os.path.exists(saved_file):
+                            self.custom_cookie_file = saved_file
+                            basename = os.path.basename(saved_file)
+                            # Manually show the browse UI
+                            self.browse_btn.pack(side="left", padx=5)
+                            self.auth_path_label.pack(side="left", padx=5)
+                            self.auth_path_label.configure(text=basename if len(basename) < 20 else basename[:17]+"...")
+                    elif saved_source != "None":
+                         # Browser selected
+                         pass
+            except Exception as e:
+                print(f"Failed to load config: {e}")
+
+    def save_config(self):
+        try:
+            import json
+            data = {
+                'cookie_source': self.cookie_source_var.get(),
+                'cookie_file': self.custom_cookie_file if self.custom_cookie_file else ''
+            }
+            with open(self.config_file, 'w') as f:
+                json.dump(data, f)
+        except Exception as e:
+            print(f"Failed to save config: {e}") 
 
     def check_ffmpeg(self):
         if not shutil.which('ffmpeg'):
@@ -242,6 +286,8 @@ class YouTubeDownloaderApp(ctk.CTk):
             self.browse_btn.pack_forget()
             self.auth_path_label.pack_forget()
             self.custom_cookie_file = None
+        
+        self.save_config()
 
     def browse_cookie_file(self):
         filename = filedialog.askopenfilename(title="Select Cookies File", filetypes=[("Text files", "*.txt"), ("All files", "*.*")])
@@ -249,6 +295,7 @@ class YouTubeDownloaderApp(ctk.CTk):
             self.custom_cookie_file = filename
             basename = os.path.basename(filename)
             self.auth_path_label.configure(text=basename if len(basename) < 20 else basename[:17]+"...")
+            self.save_config()
         elif not self.custom_cookie_file:
             self.cookie_source_var.set("None")
             self.on_cookie_source_change("None")
