@@ -1,6 +1,6 @@
 # YouTube Video/Audio Downloader
 
-A powerful YouTube downloader that supports both **video (MP4)** and **audio (MP3)** downloads with quality selection options. Built with Python and yt-dlp.
+A powerful YouTube downloader that supports both **video (MP4)** and **audio (MP3)** downloads with quality selection options. Supports single videos and **entire playlists**. Built with Python and yt-dlp.
 
 ![Python](https://img.shields.io/badge/Python-3.7+-blue.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
@@ -10,7 +10,9 @@ A powerful YouTube downloader that supports both **video (MP4)** and **audio (MP
 
 - ✅ **Download Videos** in MP4 format with quality options (4K, 2K, 1080p, 720p, 480p, 360p)
 - ✅ **Download Audio** in MP3 format with bitrate options (320kbps, 256kbps, 192kbps, 128kbps, 96kbps, 64kbps)
-- ✅ **Smart URL Handling** - Automatically cleans playlist/radio URLs (just paste any YouTube URL!)
+- ✅ **Playlist Support** - Download entire playlists or select specific videos
+- ✅ **Smart URL Handling** - Automatically detects playlist URLs and gives you options
+- ✅ **Organized Downloads** - Playlist videos are saved in folders named after the playlist
 - ✅ **Cookie Support** for age-restricted and authenticated content
 - ✅ **VPS Friendly** with built-in anti-detection features
 - ✅ **Progress Display** with download speed and percentage
@@ -22,15 +24,16 @@ The script automatically handles all common YouTube URL formats:
 
 | Format | Example |
 |--------|---------|
-| Standard | `https://www.youtube.com/watch?v=VIDEO_ID` |
-| Short | `https://youtu.be/VIDEO_ID` |
-| With Playlist | `https://www.youtube.com/watch?v=VIDEO_ID&list=PLAYLIST_ID` |
+| Standard Video | `https://www.youtube.com/watch?v=VIDEO_ID` |
+| Short URL | `https://youtu.be/VIDEO_ID` |
+| Playlist | `https://www.youtube.com/playlist?list=PLAYLIST_ID` |
+| Video in Playlist | `https://www.youtube.com/watch?v=VIDEO_ID&list=PLAYLIST_ID` |
 | Radio/Mix | `https://www.youtube.com/watch?v=VIDEO_ID&list=RD...&start_radio=1` |
 | Share Link | `https://youtu.be/VIDEO_ID?si=TRACKING_ID` |
 | Embed | `https://www.youtube.com/embed/VIDEO_ID` |
 | Just Video ID | `VIDEO_ID` (11 characters) |
 
-> **Note:** When you paste a playlist URL, the script automatically extracts just the single video - it won't download the entire playlist.
+> **Playlist Detection:** When you paste a URL with a playlist, you'll be asked whether to download just the single video, the entire playlist, or select specific videos.
 
 ## Requirements
 
@@ -159,6 +162,54 @@ Progress: 100.0% | Speed: 1.25 MB/s
 Download finished, processing...
 
 [SUCCESS] Audio download and conversion completed!
+```
+
+### Playlist Download Example
+
+```
+======================================================================
+       YouTube Video/Audio Downloader
+          Supports Videos & Playlists
+======================================================================
+Using cookies from: D:\youtube-downloader\cookies.txt
+
+Enter YouTube URL (video or playlist): https://www.youtube.com/playlist?list=PLxxxxxxxx
+
+[INFO] Playlist URL detected
+======================================================================
+Playlist Options:
+======================================================================
+1. Download entire playlist
+2. Select specific videos
+======================================================================
+
+Select option (1-2) [default: 1]: 2
+
+Extracting information...
+
+Playlist: My Awesome Playlist
+Videos: 25
+Channel: Some Channel
+
+Videos in playlist:
+--------------------------------------------------
+  1. First Video Title...
+  2. Second Video Title...
+  3. Third Video Title...
+  ... and 22 more videos
+
+Enter video numbers to download (1-25, e.g., 1,3,5-10): 1-5,10
+
+======================================================================
+Download Mode:
+======================================================================
+1. VIDEO (MP4)
+2. AUDIO (MP3)
+======================================================================
+
+Select mode (1 for Video, 2 for Audio) [default: 1]: 2
+
+Downloading PLAYLIST AUDIO and converting to MP3 (320 kbps)...
 ```
 
 ## Quality Options
