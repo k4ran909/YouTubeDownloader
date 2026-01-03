@@ -191,12 +191,15 @@ class YouTubeDownloaderApp(ctk.CTk):
 
     def load_config(self):
         self.config_file = self.get_config_path()
+        self.log_message(f"[Config] Checking for config at: {self.config_file}")
         
         if os.path.exists(self.config_file):
             try:
                 import json
                 with open(self.config_file, 'r') as f:
                     data = json.load(f)
+                
+                self.log_message(f"[Config] Loaded data: {data}")
                     
                 saved_source = data.get('cookie_source', 'None')
                 saved_file = data.get('cookie_file', '')
@@ -204,6 +207,8 @@ class YouTubeDownloaderApp(ctk.CTk):
                 # Restore Cookie Source
                 if saved_source:
                     self.cookie_source_var.set(saved_source)
+                    self.cookie_source_menu.set(saved_source) # Explicitly update widget
+                    
                     # Trigger UI update
                     if saved_source == "Select File...":
                         if saved_file and os.path.exists(saved_file):
@@ -213,10 +218,14 @@ class YouTubeDownloaderApp(ctk.CTk):
                             self.browse_btn.pack(side="left", padx=5)
                             self.auth_path_label.pack(side="left", padx=5)
                             self.auth_path_label.configure(text=basename if len(basename) < 20 else basename[:17]+"...")
+                            self.log_message(f"[Config] Restored cookie file: {basename}")
+                        else:
+                             self.log_message(f"[Config] Saved cookie file not found: {saved_file}")
                 
-                self.log_message(f"[System] Settings loaded from {self.config_file}")
             except Exception as e:
                 self.log_message(f"[Config] Error loading config: {e}")
+        else:
+             self.log_message("[Config] No config file found (First run?)")
 
     def save_config(self):
         try:
@@ -231,7 +240,7 @@ class YouTubeDownloaderApp(ctk.CTk):
             }
             with open(self.config_file, 'w') as f:
                 json.dump(data, f)
-            # self.log_message(f"[System] Settings saved") 
+            self.log_message(f"[Config] Settings saved: {data}") 
         except Exception as e:
             self.log_message(f"[Config] Error saving config: {e}") 
 
