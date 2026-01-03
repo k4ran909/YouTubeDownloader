@@ -177,17 +177,21 @@ class YouTubeDownloaderApp(ctk.CTk):
         # Row configuration
         self.grid_rowconfigure(6, weight=1) 
 
-    def load_config(self):
-        # Determine correct path for config file
-        if getattr(sys, 'frozen', False):
-            # If running as exe, store config in the same path as the exe
-            application_path = os.path.dirname(sys.executable)
-        else:
-            # If running as script, store in the script directory
-            application_path = os.path.dirname(os.path.abspath(__file__))
+    def get_config_path(self):
+        # Use APPDATA for reliable storage
+        app_data = os.getenv('APPDATA')
+        if not app_data:
+            app_data = os.path.expanduser("~") # Fallback to user home
+        
+        config_dir = os.path.join(app_data, "YT-Downloader")
+        if not os.path.exists(config_dir):
+            os.makedirs(config_dir)
             
-        self.config_file = os.path.join(application_path, 'config.json')
+        return os.path.join(config_dir, "config.json")
 
+    def load_config(self):
+        self.config_file = self.get_config_path()
+        
         if os.path.exists(self.config_file):
             try:
                 import json
@@ -202,28 +206,23 @@ class YouTubeDownloaderApp(ctk.CTk):
                     self.cookie_source_var.set(saved_source)
                     # Trigger UI update
                     if saved_source == "Select File...":
-                        if os.path.exists(saved_file):
+                        if saved_file and os.path.exists(saved_file):
                             self.custom_cookie_file = saved_file
                             basename = os.path.basename(saved_file)
                             # Manually show the browse UI
                             self.browse_btn.pack(side="left", padx=5)
                             self.auth_path_label.pack(side="left", padx=5)
                             self.auth_path_label.configure(text=basename if len(basename) < 20 else basename[:17]+"...")
-                    elif saved_source != "None":
-                         # Browser selected
-                         pass
+                
+                self.log_message(f"[System] Settings loaded from {self.config_file}")
             except Exception as e:
                 self.log_message(f"[Config] Error loading config: {e}")
 
     def save_config(self):
         try:
-            # Ensure path is set (in case save is called before load)
+            # Ensure path is set
             if not hasattr(self, 'config_file'):
-                if getattr(sys, 'frozen', False):
-                    application_path = os.path.dirname(sys.executable)
-                else:
-                    application_path = os.path.dirname(os.path.abspath(__file__))
-                self.config_file = os.path.join(application_path, 'config.json')
+                self.config_file = self.get_config_path()
 
             import json
             data = {
@@ -232,6 +231,7 @@ class YouTubeDownloaderApp(ctk.CTk):
             }
             with open(self.config_file, 'w') as f:
                 json.dump(data, f)
+            # self.log_message(f"[System] Settings saved") 
         except Exception as e:
             self.log_message(f"[Config] Error saving config: {e}") 
 
