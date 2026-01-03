@@ -336,6 +336,16 @@ class YouTubeDownloaderApp(ctk.CTk):
                     "Please CLOSE your browser completely and try again.\n"
                     "(The database is locked while the browser is open)"
                 )
+            
+            # Check for DPAPI/Decryption error
+            elif "decrypt" in error_msg and "DPAPI" in error_msg:
+                messagebox.showerror("Encryption Error", 
+                    f"Could not decrypt {self.cookie_source_var.get()} cookies.\n\n"
+                    "Chrome's encryption is blocking access.\n"
+                    "Workarounds:\n"
+                    "1. Try using Firefox (it works better)\n"
+                    "2. Or select 'Select File...' and use a manually exported cookies.txt"
+                )
             else:
                 messagebox.showerror("Error", f"Download Failed:\n{error_msg}")
         
