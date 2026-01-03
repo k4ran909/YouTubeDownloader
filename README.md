@@ -10,10 +10,27 @@ A powerful YouTube downloader that supports both **video (MP4)** and **audio (MP
 
 - ✅ **Download Videos** in MP4 format with quality options (4K, 2K, 1080p, 720p, 480p, 360p)
 - ✅ **Download Audio** in MP3 format with bitrate options (320kbps, 256kbps, 192kbps, 128kbps, 96kbps, 64kbps)
+- ✅ **Smart URL Handling** - Automatically cleans playlist/radio URLs (just paste any YouTube URL!)
 - ✅ **Cookie Support** for age-restricted and authenticated content
 - ✅ **VPS Friendly** with built-in anti-detection features
 - ✅ **Progress Display** with download speed and percentage
 - ✅ **Cross-Platform** works on Windows, Linux, and macOS
+
+## Supported URL Formats
+
+The script automatically handles all common YouTube URL formats:
+
+| Format | Example |
+|--------|---------|
+| Standard | `https://www.youtube.com/watch?v=VIDEO_ID` |
+| Short | `https://youtu.be/VIDEO_ID` |
+| With Playlist | `https://www.youtube.com/watch?v=VIDEO_ID&list=PLAYLIST_ID` |
+| Radio/Mix | `https://www.youtube.com/watch?v=VIDEO_ID&list=RD...&start_radio=1` |
+| Share Link | `https://youtu.be/VIDEO_ID?si=TRACKING_ID` |
+| Embed | `https://www.youtube.com/embed/VIDEO_ID` |
+| Just Video ID | `VIDEO_ID` (11 characters) |
+
+> **Note:** When you paste a playlist URL, the script automatically extracts just the single video - it won't download the entire playlist.
 
 ## Requirements
 

@@ -47,8 +47,53 @@ def check_ffmpeg():
     return shutil.which('ffmpeg') is not None
 
 
+def extract_video_id(url):
+    """Extract video ID from various YouTube URL formats"""
+    # Patterns to match video ID from different URL formats
+    patterns = [
+        r'(?:youtube\.com/watch\?v=|youtu\.be/)([a-zA-Z0-9_-]{11})',
+        r'youtube\.com/embed/([a-zA-Z0-9_-]{11})',
+        r'youtube\.com/v/([a-zA-Z0-9_-]{11})',
+        r'^([a-zA-Z0-9_-]{11})$',  # Just the video ID
+    ]
+    
+    for pattern in patterns:
+        match = re.search(pattern, url)
+        if match:
+            return match.group(1)
+    
+    return None
+
+
+def clean_url(url):
+    """
+    Clean YouTube URL by removing playlist and other unnecessary parameters.
+    This prevents issues with playlist/radio URLs that can cause hanging.
+    """
+    url = url.strip()
+    
+    # Extract video ID
+    video_id = extract_video_id(url)
+    
+    if video_id:
+        # Return a clean URL with just the video ID
+        clean = f"https://www.youtube.com/watch?v={video_id}"
+        
+        # Check if original URL had playlist parameters
+        if 'list=' in url or 'start_radio=' in url:
+            print(f"[INFO] Cleaned URL (removed playlist parameters)")
+            print(f"       Original: {url[:70]}{'...' if len(url) > 70 else ''}")
+            print(f"       Clean: {clean}")
+        
+        return clean
+    
+    # If we couldn't extract video ID, return original URL
+    print(f"Warning: Could not extract video ID from URL: {url}")
+    return url
+
+
 def validate_url(url):
-    """Validate and clean YouTube URL"""
+    """Validate YouTube URL"""
     url = url.strip()
     
     # Check if it's a valid YouTube URL pattern
@@ -59,10 +104,9 @@ def validate_url(url):
     
     for pattern in youtube_patterns:
         if re.match(pattern, url):
-            return url
+            return True
     
-    print(f"Warning: URL format might be incorrect: {url}")
-    return url
+    return False
 
 
 def get_video_info(url):
@@ -73,6 +117,7 @@ def get_video_info(url):
         'extract_flat': False,
         'skip_download': True,
         'ignoreerrors': False,
+        'noplaylist': True,  # Only download single video, not playlist
         **VPS_OPTIONS,
     }
     
@@ -132,6 +177,7 @@ def download_video(url, quality='best'):
         'outtmpl': '%(title)s.%(ext)s',
         'merge_output_format': 'mp4',
         'progress_hooks': [progress_hook],
+        'noplaylist': True,  # Only download single video, not playlist
         **VPS_OPTIONS,
     }
     
@@ -176,6 +222,7 @@ def download_audio(url, quality='320'):
         'format': 'bestaudio/best',
         'outtmpl': '%(title)s.%(ext)s',
         'progress_hooks': [progress_hook],
+        'noplaylist': True,  # Only download single video, not playlist
         **VPS_OPTIONS,
         # Post-processing to convert to MP3
         'postprocessors': [{
@@ -241,8 +288,13 @@ def main():
         print("Error: No URL provided!")
         return
     
-    # Validate and clean URL
-    url = validate_url(url)
+    # Validate URL
+    if not validate_url(url):
+        print(f"Error: Invalid YouTube URL: {url}")
+        return
+    
+    # Clean URL (remove playlist parameters)
+    url = clean_url(url)
     print(f"\nProcessing URL: {url}")
     
     # Get video info
