@@ -46,7 +46,7 @@ The script automatically handles all common YouTube URL formats:
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/youtube-downloader.git
+git clone https://github.com/shohan-001/youtube-downloader.git
 cd youtube-downloader
 ```
 
