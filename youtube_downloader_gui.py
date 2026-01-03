@@ -131,17 +131,33 @@ class YouTubeDownloaderApp(ctk.CTk):
 
         self.browse_btn = ctk.CTkButton(self.auth_frame, text="Browse...", width=80, command=self.browse_cookie_file)
         self.auth_path_label = ctk.CTkLabel(self.auth_frame, text="", text_color="gray")
+
+        # === Save Location Frame ===
+        self.save_loc_frame = ctk.CTkFrame(self)
+        self.save_loc_frame.grid(row=4, column=0, padx=20, pady=5, sticky="ew")
+
+        self.save_loc_label = ctk.CTkLabel(self.save_loc_frame, text="Save To:", font=ctk.CTkFont(weight="bold"))
+        self.save_loc_label.pack(side="left", padx=15, pady=10)
+
+        # Truncated path
+        self.save_loc_path_label = ctk.CTkLabel(self.save_loc_frame, text=self.download_folder if hasattr(self, 'download_folder') else "Default")
+        self.save_loc_path_label.pack(side="left", padx=5)
+        # Update trunc text
+        self.update_save_loc_label()
+
+        self.save_loc_btn = ctk.CTkButton(self.save_loc_frame, text="Change...", width=80, command=self.browse_download_folder)
+        self.save_loc_btn.pack(side="right", padx=15, pady=10)
         
         # === Download Button & Status ===
         self.action_frame = ctk.CTkFrame(self, fg_color="transparent")
-        self.action_frame.grid(row=4, column=0, padx=20, pady=20, sticky="ew")
+        self.action_frame.grid(row=5, column=0, padx=20, pady=20, sticky="ew")
 
         self.download_btn = ctk.CTkButton(self.action_frame, text="Start Download", font=ctk.CTkFont(size=15, weight="bold"), height=40, command=self.start_download_thread)
         self.download_btn.pack(fill="x")
         
         # === Stats Frame ===
         self.stats_frame = ctk.CTkFrame(self, fg_color="transparent")
-        self.stats_frame.grid(row=5, column=0, padx=20, pady=(0, 5), sticky="ew")
+        self.stats_frame.grid(row=6, column=0, padx=20, pady=(0, 5), sticky="ew")
         
         self.stat_speed = ctk.CTkLabel(self.stats_frame, text="Speed: -", font=("Consolas", 12))
         self.stat_speed.pack(side="left", padx=10, expand=True)
@@ -153,8 +169,9 @@ class YouTubeDownloaderApp(ctk.CTk):
         self.stat_size.pack(side="left", padx=10, expand=True)
 
         # === Console / Log ===
+        self.log_frame = ctk.CTkFrame(self, fg_color="transparent") # Changed to transparent to match style if needed, but keeping default is fine. Let's keep consistency.
         self.log_frame = ctk.CTkFrame(self)
-        self.log_frame.grid(row=6, column=0, padx=20, pady=(0, 20), sticky="nsew")
+        self.log_frame.grid(row=7, column=0, padx=20, pady=(0, 20), sticky="nsew")
         
         self.log_textbox = ctk.CTkTextbox(self.log_frame, font=("Consolas", 12))
         self.log_textbox.pack(fill="both", expand=True, padx=5, pady=5)
@@ -162,7 +179,7 @@ class YouTubeDownloaderApp(ctk.CTk):
 
         # === Progress Bar ===
         self.progress_bar = ctk.CTkProgressBar(self)
-        self.progress_bar.grid(row=7, column=0, padx=20, pady=(0, 20), sticky="ew")
+        self.progress_bar.grid(row=8, column=0, padx=20, pady=(0, 20), sticky="ew")
         self.progress_bar.set(0)
 
         # Bind URL change to detect playlist
@@ -203,46 +220,62 @@ class YouTubeDownloaderApp(ctk.CTk):
                     
                 saved_source = data.get('cookie_source', 'None')
                 saved_file = data.get('cookie_file', '')
+                saved_folder = data.get('download_folder', '')
                 
                 # Restore Cookie Source
                 if saved_source:
                     self.cookie_source_var.set(saved_source)
-                    self.cookie_source_menu.set(saved_source) # Explicitly update widget
+                    self.cookie_source_menu.set(saved_source)
                     
-                    # Trigger UI update
-                    if saved_source == "Select File...":
-                        if saved_file and os.path.exists(saved_file):
-                            self.custom_cookie_file = saved_file
-                            basename = os.path.basename(saved_file)
-                            # Manually show the browse UI
-                            self.browse_btn.pack(side="left", padx=5)
-                            self.auth_path_label.pack(side="left", padx=5)
-                            self.auth_path_label.configure(text=basename if len(basename) < 20 else basename[:17]+"...")
-                            self.log_message(f"[Config] Restored cookie file: {basename}")
-                        else:
-                             self.log_message(f"[Config] Saved cookie file not found: {saved_file}")
+                    if saved_source == "Select File..." and saved_file and os.path.exists(saved_file):
+                        self.custom_cookie_file = saved_file
+                        basename = os.path.basename(saved_file)
+                        self.browse_btn.pack(side="left", padx=5)
+                        self.auth_path_label.pack(side="left", padx=5)
+                        self.auth_path_label.configure(text=basename if len(basename) < 20 else basename[:17]+"...")
+                
+                # Restore Download Folder
+                if saved_folder and os.path.exists(saved_folder):
+                    self.download_folder = saved_folder
+                    # Note: UI label update happens in create_widgets if called after, 
+                    # but create_widgets is called BEFORE load_config in init.
+                    # So we need to update UI here if it exists.
+                    if hasattr(self, 'save_loc_path_label'):
+                         self.update_save_loc_label()
                 
             except Exception as e:
                 self.log_message(f"[Config] Error loading config: {e}")
-        else:
-             self.log_message("[Config] No config file found (First run?)")
 
     def save_config(self):
         try:
-            # Ensure path is set
             if not hasattr(self, 'config_file'):
                 self.config_file = self.get_config_path()
 
             import json
             data = {
                 'cookie_source': self.cookie_source_var.get(),
-                'cookie_file': self.custom_cookie_file if self.custom_cookie_file else ''
+                'cookie_file': self.custom_cookie_file if self.custom_cookie_file else '',
+                'download_folder': self.download_folder if hasattr(self, 'download_folder') else ''
             }
             with open(self.config_file, 'w') as f:
                 json.dump(data, f)
-            self.log_message(f"[Config] Settings saved: {data}") 
+            self.log_message(f"[Config] Settings saved.") 
         except Exception as e:
-            self.log_message(f"[Config] Error saving config: {e}") 
+            self.log_message(f"[Config] Error saving config: {e}")
+
+    def browse_download_folder(self):
+        folder = filedialog.askdirectory(title="Select Download Folder")
+        if folder:
+            self.download_folder = folder
+            self.update_save_loc_label()
+            self.save_config()
+
+    def update_save_loc_label(self):
+        if hasattr(self, 'save_loc_path_label'):
+             path = self.download_folder
+             if len(path) > 30:
+                 path = "..." + path[-27:]
+             self.save_loc_path_label.configure(text=path) 
 
     def check_ffmpeg(self):
         if not shutil.which('ffmpeg'):
@@ -275,10 +308,11 @@ class YouTubeDownloaderApp(ctk.CTk):
             # Shift for Playlist UI
             self.playlist_frame.grid(row=3, column=0, padx=20, pady=5, sticky="ew")
             self.auth_frame.grid(row=4, column=0, padx=20, pady=5, sticky="ew")
-            self.action_frame.grid(row=5, column=0, padx=20, pady=20, sticky="ew")
-            self.stats_frame.grid(row=6, column=0, padx=20, pady=(0, 5), sticky="ew")
-            self.log_frame.grid(row=7, column=0, padx=20, pady=(0, 20), sticky="nsew")
-            self.progress_bar.grid(row=8, column=0, padx=20, pady=(0, 20), sticky="ew")
+            self.save_loc_frame.grid(row=5, column=0, padx=20, pady=5, sticky="ew")
+            self.action_frame.grid(row=6, column=0, padx=20, pady=20, sticky="ew")
+            self.stats_frame.grid(row=7, column=0, padx=20, pady=(0, 5), sticky="ew")
+            self.log_frame.grid(row=8, column=0, padx=20, pady=(0, 20), sticky="nsew")
+            self.progress_bar.grid(row=9, column=0, padx=20, pady=(0, 20), sticky="ew")
             
             # Check for Radio playlist
             if 'list=RD' in url:
@@ -287,20 +321,21 @@ class YouTubeDownloaderApp(ctk.CTk):
             else:
                 self.dl_playlist_btn.configure(state="normal", text="Download Entire Playlist")
             
-            self.grid_rowconfigure(6, weight=0)
-            self.grid_rowconfigure(7, weight=1) # Log frame expanvsion
+            self.grid_rowconfigure(7, weight=0)
+            self.grid_rowconfigure(8, weight=1) # Log frame expansion
             
         else:
             self.playlist_frame.grid_forget()
             # Standard UI
             self.auth_frame.grid(row=3, column=0, padx=20, pady=5, sticky="ew")
-            self.action_frame.grid(row=4, column=0, padx=20, pady=20, sticky="ew")
-            self.stats_frame.grid(row=5, column=0, padx=20, pady=(0, 5), sticky="ew")
-            self.log_frame.grid(row=6, column=0, padx=20, pady=(0, 20), sticky="nsew")
-            self.progress_bar.grid(row=7, column=0, padx=20, pady=(0, 20), sticky="ew")
+            self.save_loc_frame.grid(row=4, column=0, padx=20, pady=5, sticky="ew")
+            self.action_frame.grid(row=5, column=0, padx=20, pady=20, sticky="ew")
+            self.stats_frame.grid(row=6, column=0, padx=20, pady=(0, 5), sticky="ew")
+            self.log_frame.grid(row=7, column=0, padx=20, pady=(0, 20), sticky="nsew")
+            self.progress_bar.grid(row=8, column=0, padx=20, pady=(0, 20), sticky="ew")
             
-            self.grid_rowconfigure(6, weight=1) # Log frame expansion
-            self.grid_rowconfigure(7, weight=0)
+            self.grid_rowconfigure(7, weight=1) # Log frame expansion
+            self.grid_rowconfigure(8, weight=0)
 
     def on_cookie_source_change(self, choice):
         try:
@@ -374,6 +409,13 @@ class YouTubeDownloaderApp(ctk.CTk):
                 'retries': 10,
                 'sleep_interval': 1,
             }
+
+            # Set Download Path
+            if hasattr(self, 'download_folder') and self.download_folder and os.path.exists(self.download_folder):
+                ydl_opts['paths'] = {'home': self.download_folder}
+                self.log_message(f"[System] Saving to: {self.download_folder}")
+            else:
+                 self.log_message(f"[System] Saving to default folder")
 
             # === Authentication Logic ===
             if cookie_source == "Select File..." and self.custom_cookie_file:
