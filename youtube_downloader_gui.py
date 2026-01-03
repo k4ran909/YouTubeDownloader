@@ -188,6 +188,11 @@ class YouTubeDownloaderApp(ctk.CTk):
                 self.playlist_option_var.set("video")
             else:
                 self.dl_playlist_btn.configure(state="normal", text="Download Entire Playlist")
+            
+            # Update row weights
+            self.grid_rowconfigure(5, weight=0) # Action frame (no expansion)
+            self.grid_rowconfigure(6, weight=1) # Log frame (expand)
+            
         else:
             self.playlist_frame.grid_forget()
             # Move everything back up
@@ -195,6 +200,10 @@ class YouTubeDownloaderApp(ctk.CTk):
             self.action_frame.grid(row=4, column=0, padx=20, pady=20, sticky="ew")
             self.log_frame.grid(row=5, column=0, padx=20, pady=(0, 20), sticky="nsew")
             self.progress_bar.grid(row=6, column=0, padx=20, pady=(0, 20), sticky="ew")
+            
+            # Reset row weights
+            self.grid_rowconfigure(5, weight=1) # Log frame (expand)
+            self.grid_rowconfigure(6, weight=0)
 
     def on_cookie_source_change(self, choice):
         if choice == "Select File...":
