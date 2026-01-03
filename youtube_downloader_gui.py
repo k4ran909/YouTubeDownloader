@@ -157,7 +157,29 @@ class YouTubeDownloaderApp(ctk.CTk):
         # Row configuration
         self.grid_rowconfigure(6, weight=1) 
 
-    # ... (existing methods) ...
+    def check_ffmpeg(self):
+        if not shutil.which('ffmpeg'):
+            self.log_message("[WARNING] FFmpeg not found! Audio conversion may fail.")
+            self.log_message("Please install FFmpeg and add it to your PATH.")
+        else:
+            self.log_message("[System] FFmpeg detected.")
+
+    def log_message(self, message):
+        self.log_textbox.configure(state="normal")
+        self.log_textbox.insert("end", message + "\n")
+        self.log_textbox.see("end")
+        self.log_textbox.configure(state="disabled")
+
+    def update_quality_options(self):
+        mode = self.mode_var.get()
+        if mode == "video":
+            values = ["Best", "2160p", "1440p", "1080p", "720p", "480p", "360p"]
+            self.quality_var.set("Best")
+        else:
+            values = ["320 kbps", "256 kbps", "192 kbps", "128 kbps", "96 kbps", "64 kbps"]
+            self.quality_var.set("320 kbps")
+        
+        self.quality_menu.configure(values=values)
 
     def on_url_change(self, *args):
         url = self.url_var.get()
@@ -193,7 +215,160 @@ class YouTubeDownloaderApp(ctk.CTk):
             self.grid_rowconfigure(6, weight=1) # Log frame expansion
             self.grid_rowconfigure(7, weight=0)
 
-    # ... (existing methods) ...
+    def on_cookie_source_change(self, choice):
+        if choice == "Select File...":
+            self.browse_btn.pack(side="left", padx=5)
+            self.auth_path_label.pack(side="left", padx=5)
+            if not self.auth_path_label.cget("text"):
+                self.browse_cookie_file()
+        else:
+            self.browse_btn.pack_forget()
+            self.auth_path_label.pack_forget()
+            self.custom_cookie_file = None
+
+    def browse_cookie_file(self):
+        filename = filedialog.askopenfilename(title="Select Cookies File", filetypes=[("Text files", "*.txt"), ("All files", "*.*")])
+        if filename:
+            self.custom_cookie_file = filename
+            basename = os.path.basename(filename)
+            self.auth_path_label.configure(text=basename if len(basename) < 20 else basename[:17]+"...")
+        elif not self.custom_cookie_file:
+            self.cookie_source_var.set("None")
+            self.on_cookie_source_change("None")
+
+    def start_download_thread(self):
+        url = self.url_var.get().strip()
+        if not url:
+            messagebox.showerror("Error", "Please provide a URL")
+            return
+
+        self.download_btn.configure(state="disabled", text="Downloading...")
+        self.progress_bar.set(0)
+        self.progress_bar.configure(mode="indeterminate")
+        self.progress_bar.start()
+        
+        thread = threading.Thread(target=self.run_download)
+        thread.daemon = True
+        thread.start()
+
+    def run_download(self):
+        try:
+            url = self.url_var.get().strip()
+            mode = self.mode_var.get()
+            quality = self.quality_var.get()
+            playlist_choice = self.playlist_option_var.get()
+            cookie_source = self.cookie_source_var.get()
+            
+            # Determine if we are downloading playlist
+            download_playlist = False
+            if 'list=' in url and playlist_choice == 'playlist':
+                download_playlist = True
+            
+            # Configure Options
+            ydl_opts = {
+                'quiet': True,
+                'no_warnings': True,
+                'progress_hooks': [self.progress_hook],
+                'noplaylist': not download_playlist,
+                # VPS Options
+                'geo_bypass': True,
+                'retries': 10,
+                'sleep_interval': 1,
+            }
+
+            # === Authentication Logic ===
+            if cookie_source == "Select File..." and self.custom_cookie_file:
+                if os.path.exists(self.custom_cookie_file):
+                    ydl_opts['cookiefile'] = self.custom_cookie_file
+                    self.log_message(f"[Auth] Using Cookie File: {os.path.basename(self.custom_cookie_file)}")
+                else:
+                    self.log_message(f"[Warning] Selected cookie file not found!")
+            
+            elif cookie_source in ["Chrome", "Firefox", "Edge", "Opera", "Brave"]:
+                browser_map = {
+                    "Chrome": "chrome", "Firefox": "firefox", "Edge": "edge", 
+                    "Opera": "opera", "Brave": "brave"
+                }
+                browser_key = browser_map.get(cookie_source)
+                if browser_key:
+                    ydl_opts['cookiesfrombrowser'] = (browser_key,)
+                    self.log_message(f"[Auth] Extracting cookies from {cookie_source}...")
+            
+            elif os.path.exists(self.cookies_file) and cookie_source == "None":
+                 pass
+
+            # Video Mode
+            if mode == "video":
+                quality_map = {
+                    'Best': 'bestvideo+bestaudio/best',
+                    '2160p': 'bestvideo[height<=2160]+bestaudio/best',
+                    '1440p': 'bestvideo[height<=1440]+bestaudio/best',
+                    '1080p': 'bestvideo[height<=1080]+bestaudio/best',
+                    '720p': 'bestvideo[height<=720]+bestaudio/best',
+                    '480p': 'bestvideo[height<=480]+bestaudio/best',
+                    '360p': 'bestvideo[height<=360]+bestaudio/best',
+                }
+                format_str = quality_map.get(quality, 'bestvideo+bestaudio/best')
+                ydl_opts.update({
+                    'format': format_str,
+                    'merge_output_format': 'mp4',
+                    'outtmpl': '%(playlist_title)s/%(title)s.%(ext)s' if download_playlist else '%(title)s.%(ext)s',
+                })
+                self.log_message(f"[Start] Downloading Video ({quality})...")
+
+            # Audio Mode
+            else:
+                quality_val = quality.split()[0] # "320 kbps" -> "320"
+                audio_map = {'320': '0', '256': '1', '192': '2', '128': '5', '96': '6', '64': '8'}
+                
+                ydl_opts.update({
+                    'format': 'bestaudio/best',
+                    'outtmpl': '%(playlist_title)s/%(title)s.%(ext)s' if download_playlist else '%(title)s.%(ext)s',
+                    'postprocessors': [{
+                        'key': 'FFmpegExtractAudio',
+                        'preferredcodec': 'mp3',
+                        'preferredquality': audio_map.get(quality_val, '0'),
+                    }],
+                })
+                self.log_message(f"[Start] Downloading Audio ({quality})...")
+
+            # Start Download
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                self.log_message(f"Processing: {url}")
+                ydl.download([url])
+            
+            self.log_message("[Success] Download Completed!")
+            messagebox.showinfo("Success", "Download Completed Successfully!")
+
+        except Exception as e:
+            error_msg = str(e)
+            self.log_message(f"[Error] {error_msg}")
+            
+            # Check for specific browser cookie error
+            if "Could not copy" in error_msg and "cookie database" in error_msg:
+                messagebox.showerror("Browser Error", 
+                    f"Could not access {self.cookie_source_var.get()} cookies.\n\n"
+                    "Please CLOSE your browser completely and try again.\n"
+                    "(The database is locked while the browser is open)"
+                )
+            
+            # Check for DPAPI/Decryption error
+            elif "decrypt" in error_msg and "DPAPI" in error_msg:
+                messagebox.showerror("Encryption Error", 
+                    f"Could not decrypt {self.cookie_source_var.get()} cookies.\n\n"
+                    "Chrome's encryption is blocking access.\n"
+                    "Workarounds:\n"
+                    "1. Try using Firefox (it works better)\n"
+                    "2. Or select 'Select File...' and use a manually exported cookies.txt"
+                )
+            else:
+                messagebox.showerror("Error", f"Download Failed:\n{error_msg}")
+        
+        finally:
+            self.download_btn.configure(state="normal", text="Start Download")
+            self.progress_bar.stop()
+            self.progress_bar.configure(mode="determinate")
+            self.progress_bar.set(1)
 
     def progress_hook(self, d):
         if d['status'] == 'downloading':
