@@ -95,6 +95,26 @@ class YouTubeDownloaderApp(ctk.CTk):
         self.dl_playlist_btn = ctk.CTkRadioButton(self.playlist_frame, text="Download Entire Playlist", variable=self.playlist_option_var, value="playlist")
         self.dl_playlist_btn.pack(side="left", padx=10)
         
+        # === Authentication Frame ===
+        self.auth_frame = ctk.CTkFrame(self)
+        self.auth_frame.grid(row=3, column=0, padx=20, pady=5, sticky="ew")
+
+        self.auth_label = ctk.CTkLabel(self.auth_frame, text="Auth / Cookies:", font=ctk.CTkFont(weight="bold"))
+        self.auth_label.pack(side="left", padx=15, pady=10)
+
+        self.cookie_source_var = tk.StringVar(value="None")
+        self.cookie_source_menu = ctk.CTkOptionMenu(
+            self.auth_frame, 
+            variable=self.cookie_source_var, 
+            values=["None", "Chrome", "Firefox", "Edge", "Opera", "Brave", "Select File..."],
+            command=self.on_cookie_source_change,
+            width=150
+        )
+        self.cookie_source_menu.pack(side="left", padx=5, pady=10)
+
+        self.browse_btn = ctk.CTkButton(self.auth_frame, text="Browse...", width=80, command=self.browse_cookie_file)
+        self.auth_path_label = ctk.CTkLabel(self.auth_frame, text="", text_color="gray")
+
         # === Download Button & Status ===
         self.action_frame = ctk.CTkFrame(self, fg_color="transparent")
         self.action_frame.grid(row=4, column=0, padx=20, pady=20, sticky="ew")
@@ -117,6 +137,9 @@ class YouTubeDownloaderApp(ctk.CTk):
 
         # Bind URL change to detect playlist
         self.url_var.trace_add("write", self.on_url_change)
+        
+        # Initial Auth State
+        self.custom_cookie_file = None
 
     def check_ffmpeg(self):
         if not shutil.which('ffmpeg'):
@@ -144,10 +167,21 @@ class YouTubeDownloaderApp(ctk.CTk):
 
     def on_url_change(self, *args):
         url = self.url_var.get()
+        # Playlist UI logic...
+        # Using grid_forget/grid to show/hide playlist options
+        # We need to make sure auth_frame doesn't conflict. 
+        # Auth frame is row 3. URL is row 1. Options is row 2.
+        # Playlist frame was row 3. Let's move Auth to row 4, Action to 5, Log to 6, Progress to 7.
+        
         if 'list=' in url and not 'start_radio=' in url:
-            # Show playlist options
+            # Show playlist options at row 3
             self.playlist_frame.grid(row=3, column=0, padx=20, pady=5, sticky="ew")
-            
+            # Push Auth down
+            self.auth_frame.grid(row=4, column=0, padx=20, pady=5, sticky="ew")
+            self.action_frame.grid(row=5, column=0, padx=20, pady=20, sticky="ew")
+            self.log_frame.grid(row=6, column=0, padx=20, pady=(0, 20), sticky="nsew")
+            self.progress_bar.grid(row=7, column=0, padx=20, pady=(0, 20), sticky="ew")
+
             # Check for Radio playlist
             if 'list=RD' in url:
                 self.dl_playlist_btn.configure(state="disabled", text="Playlist (Radio - Not Downloadable)")
@@ -156,6 +190,32 @@ class YouTubeDownloaderApp(ctk.CTk):
                 self.dl_playlist_btn.configure(state="normal", text="Download Entire Playlist")
         else:
             self.playlist_frame.grid_forget()
+            # Move everything back up
+            self.auth_frame.grid(row=3, column=0, padx=20, pady=5, sticky="ew")
+            self.action_frame.grid(row=4, column=0, padx=20, pady=20, sticky="ew")
+            self.log_frame.grid(row=5, column=0, padx=20, pady=(0, 20), sticky="nsew")
+            self.progress_bar.grid(row=6, column=0, padx=20, pady=(0, 20), sticky="ew")
+
+    def on_cookie_source_change(self, choice):
+        if choice == "Select File...":
+            self.browse_btn.pack(side="left", padx=5)
+            self.auth_path_label.pack(side="left", padx=5)
+            if not self.auth_path_label.cget("text"):
+                self.browse_cookie_file()
+        else:
+            self.browse_btn.pack_forget()
+            self.auth_path_label.pack_forget()
+            self.custom_cookie_file = None
+
+    def browse_cookie_file(self):
+        filename = filedialog.askopenfilename(title="Select Cookies File", filetypes=[("Text files", "*.txt"), ("All files", "*.*")])
+        if filename:
+            self.custom_cookie_file = filename
+            basename = os.path.basename(filename)
+            self.auth_path_label.configure(text=basename if len(basename) < 20 else basename[:17]+"...")
+        elif not self.custom_cookie_file:
+            self.cookie_source_var.set("None")
+            self.on_cookie_source_change("None")
 
     def start_download_thread(self):
         url = self.url_var.get().strip()
@@ -178,6 +238,7 @@ class YouTubeDownloaderApp(ctk.CTk):
             mode = self.mode_var.get()
             quality = self.quality_var.get()
             playlist_choice = self.playlist_option_var.get()
+            cookie_source = self.cookie_source_var.get()
             
             # Determine if we are downloading playlist
             download_playlist = False
@@ -196,10 +257,30 @@ class YouTubeDownloaderApp(ctk.CTk):
                 'sleep_interval': 1,
             }
 
-            # Add cookies if available
-            if os.path.exists(self.cookies_file):
-                ydl_opts['cookiefile'] = self.cookies_file
-                self.log_message("[Info] Using cookies.txt")
+            # === Authentication Logic ===
+            if cookie_source == "Select File..." and self.custom_cookie_file:
+                if os.path.exists(self.custom_cookie_file):
+                    ydl_opts['cookiefile'] = self.custom_cookie_file
+                    self.log_message(f"[Auth] Using Cookie File: {os.path.basename(self.custom_cookie_file)}")
+                else:
+                    self.log_message(f"[Warning] Selected cookie file not found!")
+            
+            elif cookie_source in ["Chrome", "Firefox", "Edge", "Opera", "Brave"]:
+                browser_map = {
+                    "Chrome": "chrome", "Firefox": "firefox", "Edge": "edge", 
+                    "Opera": "opera", "Brave": "brave"
+                }
+                browser_key = browser_map.get(cookie_source)
+                if browser_key:
+                    ydl_opts['cookiesfrombrowser'] = (browser_key,)
+                    self.log_message(f"[Auth] Extracting cookies from {cookie_source}...")
+            
+            elif os.path.exists(self.cookies_file) and cookie_source == "None":
+                 # Fallback to local cookies.txt if exists and no other source selected
+                 # Optional: We can make this explicit, but for now let's only use if user selects 'Select File'
+                 # OR we can log that we found it but are ignoring it because 'None' is selected.
+                 # Let's stick to EXPLICIT selection > IMPLICIT to avoid confusion.
+                 pass
 
             # Video Mode
             if mode == "video":
