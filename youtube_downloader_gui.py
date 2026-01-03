@@ -14,6 +14,23 @@ import random
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
 
+class MyLogger:
+    def __init__(self, gui):
+        self.gui = gui
+    
+    def debug(self, msg):
+        if not msg.startswith('[debug] '):
+            self.gui.log_message(msg)
+    
+    def info(self, msg):
+        self.gui.log_message(msg)
+
+    def warning(self, msg):
+        self.gui.log_message(f"[Warning] {msg}")
+
+    def error(self, msg):
+        self.gui.log_message(f"[Error] {msg}")
+
 class YouTubeDownloaderApp(ctk.CTk):
     def __init__(self):
         super().__init__()
@@ -463,6 +480,7 @@ class YouTubeDownloaderApp(ctk.CTk):
                 'quiet': True,
                 'no_warnings': True,
                 'progress_hooks': [self.progress_hook],
+                'logger': MyLogger(self),
                 'noplaylist': not download_playlist,
                 # VPS Options
                 'geo_bypass': True,
@@ -489,10 +507,6 @@ class YouTubeDownloaderApp(ctk.CTk):
                     self.log_message(f"[Auth] Extracting cookies from {cookie_source}...")
             
             elif os.path.exists(self.cookies_file) and cookie_source == "None":
-                 # Fallback to local cookies.txt if exists and no other source selected
-                 # Optional: We can make this explicit, but for now let's only use if user selects 'Select File'
-                 # OR we can log that we found it but are ignoring it because 'None' is selected.
-                 # Let's stick to EXPLICIT selection > IMPLICIT to avoid confusion.
                  pass
 
             # Video Mode
