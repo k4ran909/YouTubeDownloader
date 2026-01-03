@@ -37,8 +37,9 @@ class YouTubeDownloaderApp(ctk.CTk):
 
         # Configure window
         self.title("YouTube Downloader Pro")
-        self.geometry("800x600")
-        self.resizable(False, False)
+        self.geometry("900x950")
+        self.resizable(True, True)
+        self.minsize(700, 750)
 
         # Variables
         self.url_var = tk.StringVar()
@@ -47,6 +48,11 @@ class YouTubeDownloaderApp(ctk.CTk):
         self.status_var = tk.StringVar(value="Ready")
         self.playlist_option_var = tk.StringVar(value="video") # 'video', 'playlist', 'select'
         self.download_folder = os.getcwd()
+        
+        # Video info storage
+        self.current_video_title = None
+        self.current_video_channel = None
+        self.current_video_duration = None
 
         # Cookies file path
         self.cookies_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cookies.txt')
@@ -60,127 +66,382 @@ class YouTubeDownloaderApp(ctk.CTk):
     def create_widgets(self):
         # Allow grid weights
         self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(5, weight=1)
+        self.grid_rowconfigure(1, weight=1)  # Main scrollable frame expands
 
-        # === Header ===
+        # === Header (Fixed at top) ===
         self.header_frame = ctk.CTkFrame(self, fg_color="transparent")
         self.header_frame.grid(row=0, column=0, padx=20, pady=(20, 10), sticky="ew")
         
-        self.title_label = ctk.CTkLabel(self.header_frame, text="YouTube Downloader", font=ctk.CTkFont(size=24, weight="bold"))
+        self.title_label = ctk.CTkLabel(
+            self.header_frame,
+            text="🎬 YouTube Downloader Pro",
+            font=ctk.CTkFont(size=28, weight="bold")
+        )
         self.title_label.pack(side="left")
+        
+        self.subtitle_label = ctk.CTkLabel(
+            self.header_frame,
+            text="Download videos and playlists easily",
+            text_color="gray",
+            font=ctk.CTkFont(size=12)
+        )
+        self.subtitle_label.pack(side="left", padx=(15, 0))
+        
+        # Theme toggle button
+        self.theme_mode = "Dark"
+        self.theme_btn = ctk.CTkButton(
+            self.header_frame,
+            text="🌙",
+            width=40,
+            height=30,
+            command=self.toggle_theme,
+            fg_color="transparent",
+            hover_color=("gray80", "gray25")
+        )
+        self.theme_btn.pack(side="right")
+
+        # === Scrollable Main Frame ===
+        self.main_scrollable = ctk.CTkScrollableFrame(self)
+        self.main_scrollable.grid(row=1, column=0, padx=0, pady=0, sticky="nsew")
+        self.main_scrollable.grid_columnconfigure(0, weight=1)
 
         # === URL Input ===
-        self.url_frame = ctk.CTkFrame(self)
-        self.url_frame.grid(row=1, column=0, padx=20, pady=10, sticky="ew")
+        self.url_frame = ctk.CTkFrame(self.main_scrollable, corner_radius=10)
+        self.url_frame.grid(row=0, column=0, padx=20, pady=10, sticky="ew")
         
-        self.url_label = ctk.CTkLabel(self.url_frame, text="YouTube URL:")
-        self.url_label.pack(side="left", padx=10, pady=10)
+        self.url_label = ctk.CTkLabel(
+            self.url_frame,
+            text="🔗 YouTube URL:",
+            font=ctk.CTkFont(size=14, weight="bold")
+        )
+        self.url_label.pack(anchor="w", padx=15, pady=(15, 5))
         
-        self.url_entry = ctk.CTkEntry(self.url_frame, textvariable=self.url_var, width=500, placeholder_text="Paste video or playlist URL here...")
-        self.url_entry.pack(side="left", padx=10, pady=10, fill="x", expand=True)
+        self.url_entry = ctk.CTkEntry(
+            self.url_frame,
+            textvariable=self.url_var,
+            placeholder_text="Paste video or playlist URL here...",
+            height=40,
+            font=ctk.CTkFont(size=13),
+            corner_radius=8
+        )
+        self.url_entry.pack(fill="x", padx=15, pady=(0, 15), expand=True)
 
         # === Options Frame ===
-        self.options_frame = ctk.CTkFrame(self)
-        self.options_frame.grid(row=2, column=0, padx=20, pady=10, sticky="ew")
+        self.options_container = ctk.CTkFrame(self.main_scrollable, fg_color="transparent")
+        self.options_container.grid(row=1, column=0, padx=20, pady=10, sticky="ew")
+        self.options_container.grid_columnconfigure(0, weight=1)
+        self.options_container.grid_columnconfigure(1, weight=1)
 
-        # Mode Selection
-        self.mode_label = ctk.CTkLabel(self.options_frame, text="Mode:", font=ctk.CTkFont(weight="bold"))
-        self.mode_label.grid(row=0, column=0, padx=15, pady=10, sticky="w")
+        # Mode Selection Card
+        self.mode_card = ctk.CTkFrame(self.options_container, corner_radius=10)
+        self.mode_card.grid(row=0, column=0, padx=(0, 10), pady=0, sticky="ew")
 
-        self.radio_video = ctk.CTkRadioButton(self.options_frame, text="Video (MP4)", variable=self.mode_var, value="video", command=self.update_quality_options)
-        self.radio_video.grid(row=0, column=1, padx=10, pady=10)
+        self.mode_label = ctk.CTkLabel(
+            self.mode_card,
+            text="📹 Download Mode",
+            font=ctk.CTkFont(size=13, weight="bold")
+        )
+        self.mode_label.pack(anchor="w", padx=15, pady=(15, 10))
 
-        self.radio_audio = ctk.CTkRadioButton(self.options_frame, text="Audio (MP3)", variable=self.mode_var, value="audio", command=self.update_quality_options)
-        self.radio_audio.grid(row=0, column=2, padx=10, pady=10)
+        self.mode_radio_frame = ctk.CTkFrame(self.mode_card, fg_color="transparent")
+        self.mode_radio_frame.pack(fill="x", padx=15, pady=(0, 15))
 
-        # Quality Selection
-        self.quality_label = ctk.CTkLabel(self.options_frame, text="Quality:", font=ctk.CTkFont(weight="bold"))
-        self.quality_label.grid(row=0, column=3, padx=15, pady=10, sticky="w")
+        self.radio_video = ctk.CTkRadioButton(
+            self.mode_radio_frame,
+            text="🎥 Video (MP4)",
+            variable=self.mode_var,
+            value="video",
+            command=self.update_quality_options
+        )
+        self.radio_video.pack(side="left", padx=(0, 20))
 
-        self.quality_menu = ctk.CTkOptionMenu(self.options_frame, variable=self.quality_var, values=["Best", "2160p", "1440p", "1080p", "720p", "480p", "360p"])
-        self.quality_menu.grid(row=0, column=4, padx=10, pady=10)
+        self.radio_audio = ctk.CTkRadioButton(
+            self.mode_radio_frame,
+            text="🎵 Audio (MP3)",
+            variable=self.mode_var,
+            value="audio",
+            command=self.update_quality_options
+        )
+        self.radio_audio.pack(side="left")
+
+        # Quality Selection Card
+        self.quality_card = ctk.CTkFrame(self.options_container, corner_radius=10)
+        self.quality_card.grid(row=0, column=1, padx=(10, 0), pady=0, sticky="ew")
+
+        self.quality_label = ctk.CTkLabel(
+            self.quality_card,
+            text="⚙️ Quality",
+            font=ctk.CTkFont(size=13, weight="bold")
+        )
+        self.quality_label.pack(anchor="w", padx=15, pady=(15, 10))
+
+        self.quality_menu = ctk.CTkOptionMenu(
+            self.quality_card,
+            variable=self.quality_var,
+            values=["Best", "2160p", "1440p", "1080p", "720p", "480p", "360p"],
+            corner_radius=8,
+            width=150
+        )
+        self.quality_menu.pack(padx=15, pady=(0, 15))
+
+        # === Video Info Card (Hidden by default) ===
+        self.video_info_card = ctk.CTkFrame(self.main_scrollable, corner_radius=10, fg_color=("gray95", "gray17"))
+        
+        self.video_info_label = ctk.CTkLabel(
+            self.video_info_card,
+            text="📹 Video Information",
+            font=ctk.CTkFont(size=13, weight="bold")
+        )
+        self.video_info_label.pack(anchor="w", padx=15, pady=(15, 10))
+
+        self.video_info_container = ctk.CTkFrame(self.video_info_card, fg_color="transparent")
+        self.video_info_container.pack(fill="x", padx=15, pady=(0, 15))
+
+        self.video_title_label = ctk.CTkLabel(
+            self.video_info_container,
+            text="Title: -",
+            font=ctk.CTkFont(size=13, weight="bold"),
+            anchor="w",
+            wraplength=600
+        )
+        self.video_title_label.pack(anchor="w", pady=(0, 5))
+
+        self.video_meta_label = ctk.CTkLabel(
+            self.video_info_container,
+            text="Channel: - | Duration: -",
+            font=ctk.CTkFont(size=11),
+            text_color="gray",
+            anchor="w"
+        )
+        self.video_meta_label.pack(anchor="w")
 
         # === Playlist Options (Hidden by default) ===
-        self.playlist_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.playlist_frame = ctk.CTkFrame(self.main_scrollable, corner_radius=10, fg_color=("gray95", "gray17"))
         
-        self.playlist_label = ctk.CTkLabel(self.playlist_frame, text="Playlist Detected:", text_color="#3B8ED0", font=ctk.CTkFont(weight="bold"))
-        self.playlist_label.pack(side="left", padx=(0, 10))
+        self.playlist_label = ctk.CTkLabel(
+            self.playlist_frame,
+            text="📋 Playlist Detected:",
+            text_color="#3B8ED0",
+            font=ctk.CTkFont(size=13, weight="bold")
+        )
+        self.playlist_label.pack(side="left", padx=15, pady=12)
         
-        self.dl_single_btn = ctk.CTkRadioButton(self.playlist_frame, text="Download Video Only", variable=self.playlist_option_var, value="video")
-        self.dl_single_btn.pack(side="left", padx=10)
+        self.dl_single_btn = ctk.CTkRadioButton(
+            self.playlist_frame,
+            text="Download Video Only",
+            variable=self.playlist_option_var,
+            value="video"
+        )
+        self.dl_single_btn.pack(side="left", padx=(0, 15))
         
-        self.dl_playlist_btn = ctk.CTkRadioButton(self.playlist_frame, text="Download Entire Playlist", variable=self.playlist_option_var, value="playlist")
-        self.dl_playlist_btn.pack(side="left", padx=10)
+        self.dl_playlist_btn = ctk.CTkRadioButton(
+            self.playlist_frame,
+            text="Download Entire Playlist",
+            variable=self.playlist_option_var,
+            value="playlist"
+        )
+        self.dl_playlist_btn.pack(side="left", padx=(0, 15))
         
-        # === Authentication Frame ===
-        self.auth_frame = ctk.CTkFrame(self)
-        self.auth_frame.grid(row=3, column=0, padx=20, pady=5, sticky="ew")
+        # === Settings Card ===
+        self.settings_card = ctk.CTkFrame(self.main_scrollable, corner_radius=10)
+        self.settings_card.grid(row=3, column=0, padx=20, pady=8, sticky="ew")
 
-        self.auth_label = ctk.CTkLabel(self.auth_frame, text="Auth / Cookies:", font=ctk.CTkFont(weight="bold"))
-        self.auth_label.pack(side="left", padx=15, pady=10)
+        self.settings_label = ctk.CTkLabel(
+            self.settings_card,
+            text="⚙️ Settings",
+            font=ctk.CTkFont(size=14, weight="bold")
+        )
+        self.settings_label.pack(anchor="w", padx=15, pady=(15, 15))
+
+        # Auth section
+        self.auth_section = ctk.CTkFrame(self.settings_card, fg_color="transparent")
+        self.auth_section.pack(fill="x", padx=15, pady=(0, 10))
+
+        self.auth_label = ctk.CTkLabel(
+            self.auth_section,
+            text="🔐 Authentication:",
+            font=ctk.CTkFont(size=12, weight="bold")
+        )
+        self.auth_label.pack(side="left", padx=(0, 10))
 
         self.cookie_source_var = tk.StringVar(value="None")
         self.cookie_source_menu = ctk.CTkOptionMenu(
-            self.auth_frame, 
-            variable=self.cookie_source_var, 
+            self.auth_section,
+            variable=self.cookie_source_var,
             values=["None", "Chrome", "Firefox", "Edge", "Opera", "Brave", "Select File..."],
             command=self.on_cookie_source_change,
-            width=150
+            width=150,
+            corner_radius=8
         )
-        self.cookie_source_menu.pack(side="left", padx=5, pady=10)
+        self.cookie_source_menu.pack(side="left", padx=5)
 
-        self.browse_btn = ctk.CTkButton(self.auth_frame, text="Browse...", width=80, command=self.browse_cookie_file)
-        self.auth_path_label = ctk.CTkLabel(self.auth_frame, text="", text_color="gray")
+        self.browse_btn = ctk.CTkButton(
+            self.auth_section,
+            text="Browse...",
+            width=80,
+            command=self.browse_cookie_file,
+            corner_radius=8
+        )
+        self.auth_path_label = ctk.CTkLabel(self.auth_section, text="", text_color="gray", font=ctk.CTkFont(size=11))
 
-        # === Save Location Frame ===
-        self.save_loc_frame = ctk.CTkFrame(self)
-        self.save_loc_frame.grid(row=4, column=0, padx=20, pady=5, sticky="ew")
+        # Save location section
+        self.save_section = ctk.CTkFrame(self.settings_card, fg_color="transparent")
+        self.save_section.pack(fill="x", padx=15, pady=(10, 15))
 
-        self.save_loc_label = ctk.CTkLabel(self.save_loc_frame, text="Save To:", font=ctk.CTkFont(weight="bold"))
-        self.save_loc_label.pack(side="left", padx=15, pady=10)
+        self.save_loc_label = ctk.CTkLabel(
+            self.save_section,
+            text="📁 Save To:",
+            font=ctk.CTkFont(size=12, weight="bold")
+        )
+        self.save_loc_label.pack(side="left", padx=(0, 10))
 
-        # Truncated path
-        self.save_loc_path_label = ctk.CTkLabel(self.save_loc_frame, text=self.download_folder if hasattr(self, 'download_folder') else "Default")
-        self.save_loc_path_label.pack(side="left", padx=5)
-        # Update trunc text
+        self.save_loc_path_label = ctk.CTkLabel(
+            self.save_section,
+            text=self.download_folder if hasattr(self, 'download_folder') else "Default",
+            font=ctk.CTkFont(size=11)
+        )
+        self.save_loc_path_label.pack(side="left", fill="x", expand=True, padx=5)
         self.update_save_loc_label()
 
-        self.save_loc_btn = ctk.CTkButton(self.save_loc_frame, text="Change...", width=80, command=self.browse_download_folder)
-        self.save_loc_btn.pack(side="right", padx=15, pady=10)
+        self.save_loc_btn = ctk.CTkButton(
+            self.save_section,
+            text="Change...",
+            width=80,
+            command=self.browse_download_folder,
+            corner_radius=8
+        )
+        self.save_loc_btn.pack(side="right", padx=(10, 0))
+        
+        # Keep reference to auth_frame and save_loc_frame for compatibility with existing code
+        self.auth_frame = self.settings_card
+        self.save_loc_frame = self.settings_card
         
         # === Download Button & Status ===
-        self.action_frame = ctk.CTkFrame(self, fg_color="transparent")
-        self.action_frame.grid(row=5, column=0, padx=20, pady=20, sticky="ew")
+        self.action_frame = ctk.CTkFrame(self.main_scrollable, fg_color="transparent")
+        self.action_frame.grid(row=5, column=0, padx=20, pady=12, sticky="ew")
 
-        self.download_btn = ctk.CTkButton(self.action_frame, text="Start Download", font=ctk.CTkFont(size=15, weight="bold"), height=40, command=self.start_download_thread)
-        self.download_btn.pack(fill="x")
+        self.download_btn = ctk.CTkButton(
+            self.action_frame,
+            text="⬇️ Start Download",
+            font=ctk.CTkFont(size=16, weight="bold"),
+            height=50,
+            corner_radius=12,
+            fg_color=("#3B8ED0", "#1F6AA5"),
+            hover_color=("#2E7BC7", "#185A8A"),
+            command=self.start_download_thread
+        )
+        self.download_btn.pack(fill="x", pady=(0, 10))
         
         # === Stats Frame ===
-        self.stats_frame = ctk.CTkFrame(self, fg_color="transparent")
-        self.stats_frame.grid(row=6, column=0, padx=20, pady=(0, 5), sticky="ew")
-        
-        self.stat_speed = ctk.CTkLabel(self.stats_frame, text="Speed: -", font=("Consolas", 12))
-        self.stat_speed.pack(side="left", padx=10, expand=True)
-        
-        self.stat_eta = ctk.CTkLabel(self.stats_frame, text="ETA: -", font=("Consolas", 12))
-        self.stat_eta.pack(side="left", padx=10, expand=True)
-        
-        self.stat_size = ctk.CTkLabel(self.stats_frame, text="Size: -", font=("Consolas", 12))
-        self.stat_size.pack(side="left", padx=10, expand=True)
+        self.stats_frame = ctk.CTkFrame(self.main_scrollable, corner_radius=10)
+        self.stats_frame.grid(row=6, column=0, padx=20, pady=8, sticky="ew")
 
-        # === Console / Log ===
-        self.log_frame = ctk.CTkFrame(self, fg_color="transparent") # Changed to transparent to match style if needed, but keeping default is fine. Let's keep consistency.
-        self.log_frame = ctk.CTkFrame(self)
-        self.log_frame.grid(row=7, column=0, padx=20, pady=(0, 20), sticky="nsew")
-        
-        self.log_textbox = ctk.CTkTextbox(self.log_frame, font=("Consolas", 12))
-        self.log_textbox.pack(fill="both", expand=True, padx=5, pady=5)
-        self.log_textbox.configure(state="disabled")
+        # Speed Stat Card
+        self.speed_card = ctk.CTkFrame(self.stats_frame, corner_radius=8, fg_color=("gray90", "gray17"))
+        self.speed_card.pack(side="left", fill="both", expand=True, padx=5, pady=10)
+
+        self.speed_icon = ctk.CTkLabel(self.speed_card, text="⚡", font=ctk.CTkFont(size=20))
+        self.speed_icon.pack(pady=(10, 0))
+
+        self.speed_label = ctk.CTkLabel(self.speed_card, text="Speed", font=ctk.CTkFont(size=11), text_color="gray")
+        self.speed_label.pack()
+
+        self.stat_speed = ctk.CTkLabel(self.speed_card, text="-", font=ctk.CTkFont(size=14, weight="bold"))
+        self.stat_speed.pack(pady=(0, 10))
+
+        # ETA Stat Card
+        self.eta_card = ctk.CTkFrame(self.stats_frame, corner_radius=8, fg_color=("gray90", "gray17"))
+        self.eta_card.pack(side="left", fill="both", expand=True, padx=5, pady=10)
+
+        self.eta_icon = ctk.CTkLabel(self.eta_card, text="⏱️", font=ctk.CTkFont(size=20))
+        self.eta_icon.pack(pady=(10, 0))
+
+        self.eta_label = ctk.CTkLabel(self.eta_card, text="ETA", font=ctk.CTkFont(size=11), text_color="gray")
+        self.eta_label.pack()
+
+        self.stat_eta = ctk.CTkLabel(self.eta_card, text="-", font=ctk.CTkFont(size=14, weight="bold"))
+        self.stat_eta.pack(pady=(0, 10))
+
+        # Size Stat Card
+        self.size_card = ctk.CTkFrame(self.stats_frame, corner_radius=8, fg_color=("gray90", "gray17"))
+        self.size_card.pack(side="left", fill="both", expand=True, padx=5, pady=10)
+
+        self.size_icon = ctk.CTkLabel(self.size_card, text="💾", font=ctk.CTkFont(size=20))
+        self.size_icon.pack(pady=(10, 0))
+
+        self.size_label = ctk.CTkLabel(self.size_card, text="Size", font=ctk.CTkFont(size=11), text_color="gray")
+        self.size_label.pack()
+
+        self.stat_size = ctk.CTkLabel(self.size_card, text="-", font=ctk.CTkFont(size=14, weight="bold"))
+        self.stat_size.pack(pady=(0, 10))
 
         # === Progress Bar ===
-        self.progress_bar = ctk.CTkProgressBar(self)
-        self.progress_bar.grid(row=8, column=0, padx=20, pady=(0, 20), sticky="ew")
+        self.progress_card = ctk.CTkFrame(self.main_scrollable, corner_radius=10)
+        self.progress_card.grid(row=7, column=0, padx=20, pady=8, sticky="ew")
+
+        self.progress_label = ctk.CTkLabel(
+            self.progress_card,
+            text="Download Progress",
+            font=ctk.CTkFont(size=13, weight="bold")
+        )
+        self.progress_label.pack(anchor="w", padx=15, pady=(15, 10))
+
+        self.progress_container = ctk.CTkFrame(self.progress_card, fg_color="transparent")
+        self.progress_container.pack(fill="x", padx=15, pady=(0, 10))
+
+        self.progress_bar = ctk.CTkProgressBar(self.progress_container, height=20, corner_radius=10)
+        self.progress_bar.pack(side="left", fill="x", expand=True, padx=(0, 10))
         self.progress_bar.set(0)
+
+        self.progress_percent = ctk.CTkLabel(
+            self.progress_container,
+            text="0%",
+            font=ctk.CTkFont(size=12, weight="bold"),
+            width=50
+        )
+        self.progress_percent.pack(side="right")
+
+        self.progress_status = ctk.CTkLabel(
+            self.progress_card,
+            text="Ready",
+            text_color="gray",
+            font=ctk.CTkFont(size=11)
+        )
+        self.progress_status.pack(anchor="w", padx=15, pady=(0, 15))
+
+        # === Console / Log ===
+        self.log_frame = ctk.CTkFrame(self, corner_radius=10)
+        self.log_frame.grid(row=8, column=0, padx=20, pady=(0, 20), sticky="nsew")
+
+        self.log_header = ctk.CTkFrame(self.log_frame, fg_color="transparent")
+        self.log_header.pack(fill="x", padx=10, pady=(10, 5))
+
+        self.log_label = ctk.CTkLabel(
+            self.log_header,
+            text="📋 Console Log",
+            font=ctk.CTkFont(size=13, weight="bold")
+        )
+        self.log_label.pack(side="left")
+
+        self.log_clear_btn = ctk.CTkButton(
+            self.log_header,
+            text="Clear",
+            width=60,
+            height=25,
+            font=ctk.CTkFont(size=11),
+            command=self.clear_log,
+            corner_radius=8
+        )
+        self.log_clear_btn.pack(side="right")
+
+        self.log_textbox = ctk.CTkTextbox(
+            self.log_frame,
+            font=("Consolas", 11),
+            wrap="word",
+            corner_radius=8
+        )
+        self.log_textbox.pack(fill="both", expand=True, padx=10, pady=(0, 10))
+        self.log_textbox.configure(state="disabled")
 
         # Bind URL change to detect playlist
         self.url_var.trace_add("write", self.on_url_change)
@@ -191,8 +452,8 @@ class YouTubeDownloaderApp(ctk.CTk):
         # Load Config
         self.load_config()
 
-        # Row configuration
-        self.grid_rowconfigure(6, weight=1) 
+        # Row configuration - log frame expands
+        self.grid_rowconfigure(8, weight=1) 
 
     def get_config_path(self):
         # Use APPDATA for reliable storage
@@ -273,9 +534,133 @@ class YouTubeDownloaderApp(ctk.CTk):
     def update_save_loc_label(self):
         if hasattr(self, 'save_loc_path_label'):
              path = self.download_folder
-             if len(path) > 30:
-                 path = "..." + path[-27:]
-             self.save_loc_path_label.configure(text=path) 
+             if len(path) > 40:
+                 path = "..." + path[-37:]
+             self.save_loc_path_label.configure(text=path)
+    
+    def toggle_theme(self):
+        """Toggle between dark and light theme"""
+        current_mode = ctk.get_appearance_mode()
+        if current_mode == "Dark":
+            ctk.set_appearance_mode("Light")
+            self.theme_btn.configure(text="☀️")
+            self.theme_mode = "Light"
+        else:
+            ctk.set_appearance_mode("Dark")
+            self.theme_btn.configure(text="🌙")
+            self.theme_mode = "Dark"
+    
+    def clear_log(self):
+        """Clear the log textbox"""
+        self.log_textbox.configure(state="normal")
+        self.log_textbox.delete("1.0", "end")
+        self.log_textbox.configure(state="disabled")
+    
+    def validate_youtube_url(self, url):
+        """Validate if URL is a valid YouTube URL"""
+        url = url.strip()
+        if not url:
+            return False
+        youtube_patterns = [
+            r'(https?://)?(www\.)?(youtube\.com|youtu\.be)/.+',
+            r'^[a-zA-Z0-9_-]{11}$'
+        ]
+        for pattern in youtube_patterns:
+            if re.match(pattern, url):
+                return True
+        return False
+    
+    def fetch_video_info(self, url):
+        """Fetch video information without downloading"""
+        try:
+            ydl_opts = {
+                'quiet': True,
+                'no_warnings': True,
+                'skip_download': True,
+                'noplaylist': True,  # Only get single video info
+            }
+            
+            # Add cookies if available
+            cookie_source = self.cookie_source_var.get()
+            if cookie_source == "Select File..." and self.custom_cookie_file and os.path.exists(self.custom_cookie_file):
+                ydl_opts['cookiefile'] = self.custom_cookie_file
+            elif cookie_source in ["Chrome", "Firefox", "Edge", "Opera", "Brave"]:
+                browser_map = {
+                    "Chrome": "chrome", "Firefox": "firefox", "Edge": "edge",
+                    "Opera": "opera", "Brave": "brave"
+                }
+                browser_key = browser_map.get(cookie_source)
+                if browser_key:
+                    ydl_opts['cookiesfrombrowser'] = (browser_key,)
+            
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=False)
+                if info:
+                    # Handle playlist URLs - get first video
+                    if 'entries' in info and info['entries']:
+                        info = info['entries'][0]
+                    
+                    title = info.get('title', 'Unknown')
+                    channel = info.get('channel', info.get('uploader', 'Unknown'))
+                    duration = info.get('duration', 0) or 0
+                    
+                    # Format duration
+                    hours = duration // 3600
+                    minutes = (duration % 3600) // 60
+                    seconds = duration % 60
+                    if hours > 0:
+                        duration_str = f"{hours}:{minutes:02d}:{seconds:02d}"
+                    else:
+                        duration_str = f"{minutes}:{seconds:02d}"
+                    
+                    return {
+                        'title': title,
+                        'channel': channel,
+                        'duration': duration_str
+                    }
+        except Exception as e:
+            self.log_message(f"[Info] Could not fetch video info: {str(e)[:50]}")
+            return None
+        return None
+    
+    def display_video_info(self, info):
+        """Display video information in the info card"""
+        if not info:
+            self.video_info_card.grid_forget()
+            self.current_video_title = None
+            return
+        
+        self.current_video_title = info['title']
+        self.current_video_channel = info['channel']
+        self.current_video_duration = info['duration']
+        
+        # Update labels
+        title_text = info['title']
+        if len(title_text) > 70:
+            title_text = title_text[:67] + "..."
+        self.video_title_label.configure(text=f"Title: {title_text}")
+        self.video_meta_label.configure(text=f"Channel: {info['channel']} | Duration: {info['duration']}")
+        
+        # Show the card (adjust row based on playlist detection)
+        url = self.url_var.get()
+        if 'list=' in url and not 'start_radio=' in url:
+            # Playlist detected - show after playlist frame
+            self.video_info_card.grid(row=4, column=0, padx=20, pady=10, sticky="ew")
+            # Shift settings and other elements down
+            self.settings_card.grid(row=5, column=0, padx=20, pady=10, sticky="ew")
+            self.action_frame.grid(row=6, column=0, padx=20, pady=20, sticky="ew")
+            self.stats_frame.grid(row=7, column=0, padx=20, pady=10, sticky="ew")
+            self.progress_card.grid(row=8, column=0, padx=20, pady=10, sticky="ew")
+            self.log_frame.grid(row=9, column=0, padx=20, pady=(0, 20), sticky="ew")
+        else:
+            # Single video - show after options
+            self.video_info_card.grid(row=3, column=0, padx=20, pady=10, sticky="ew")
+            # Shift settings and other elements down
+            self.settings_card.grid(row=4, column=0, padx=20, pady=10, sticky="ew")
+            self.action_frame.grid(row=5, column=0, padx=20, pady=20, sticky="ew")
+            self.stats_frame.grid(row=6, column=0, padx=20, pady=10, sticky="ew")
+            self.progress_card.grid(row=7, column=0, padx=20, pady=10, sticky="ew")
+            self.log_frame.grid(row=8, column=0, padx=20, pady=(0, 20), sticky="ew") 
 
     def check_ffmpeg(self):
         if not shutil.which('ffmpeg'):
@@ -304,15 +689,30 @@ class YouTubeDownloaderApp(ctk.CTk):
     def on_url_change(self, *args):
         url = self.url_var.get()
         
+        # Hide video info card initially
+        self.video_info_card.grid_forget()
+        self.current_video_title = None
+        
+        # Validate URL and fetch info in background
+        if url and self.validate_youtube_url(url):
+            # Fetch video info in a thread to avoid blocking UI
+            def fetch_info():
+                info = self.fetch_video_info(url)
+                if info:
+                    # Update UI in main thread
+                    self.after(0, lambda: self.display_video_info(info))
+            
+            thread = threading.Thread(target=fetch_info, daemon=True)
+            thread.start()
+        
         if 'list=' in url and not 'start_radio=' in url:
-            # Shift for Playlist UI
-            self.playlist_frame.grid(row=3, column=0, padx=20, pady=5, sticky="ew")
-            self.auth_frame.grid(row=4, column=0, padx=20, pady=5, sticky="ew")
-            self.save_loc_frame.grid(row=5, column=0, padx=20, pady=5, sticky="ew")
-            self.action_frame.grid(row=6, column=0, padx=20, pady=20, sticky="ew")
-            self.stats_frame.grid(row=7, column=0, padx=20, pady=(0, 5), sticky="ew")
+            # Show playlist frame and shift other elements down
+            self.playlist_frame.grid(row=3, column=0, padx=20, pady=10, sticky="ew")
+            self.settings_card.grid(row=4, column=0, padx=20, pady=10, sticky="ew")
+            self.action_frame.grid(row=5, column=0, padx=20, pady=20, sticky="ew")
+            self.stats_frame.grid(row=6, column=0, padx=20, pady=10, sticky="ew")
+            self.progress_card.grid(row=7, column=0, padx=20, pady=10, sticky="ew")
             self.log_frame.grid(row=8, column=0, padx=20, pady=(0, 20), sticky="nsew")
-            self.progress_bar.grid(row=9, column=0, padx=20, pady=(0, 20), sticky="ew")
             
             # Check for Radio playlist
             if 'list=RD' in url:
@@ -321,21 +721,16 @@ class YouTubeDownloaderApp(ctk.CTk):
             else:
                 self.dl_playlist_btn.configure(state="normal", text="Download Entire Playlist")
             
-            self.grid_rowconfigure(7, weight=0)
-            self.grid_rowconfigure(8, weight=1) # Log frame expansion
             
         else:
             self.playlist_frame.grid_forget()
-            # Standard UI
-            self.auth_frame.grid(row=3, column=0, padx=20, pady=5, sticky="ew")
-            self.save_loc_frame.grid(row=4, column=0, padx=20, pady=5, sticky="ew")
+            # Standard UI (no playlist)
+            self.settings_card.grid(row=3, column=0, padx=20, pady=10, sticky="ew")
             self.action_frame.grid(row=5, column=0, padx=20, pady=20, sticky="ew")
-            self.stats_frame.grid(row=6, column=0, padx=20, pady=(0, 5), sticky="ew")
-            self.log_frame.grid(row=7, column=0, padx=20, pady=(0, 20), sticky="nsew")
-            self.progress_bar.grid(row=8, column=0, padx=20, pady=(0, 20), sticky="ew")
+            self.stats_frame.grid(row=6, column=0, padx=20, pady=10, sticky="ew")
+            self.progress_card.grid(row=7, column=0, padx=20, pady=10, sticky="ew")
+            self.log_frame.grid(row=8, column=0, padx=20, pady=(0, 20), sticky="nsew")
             
-            self.grid_rowconfigure(7, weight=1) # Log frame expansion
-            self.grid_rowconfigure(8, weight=0)
 
     def on_cookie_source_change(self, choice):
         try:
@@ -376,10 +771,16 @@ class YouTubeDownloaderApp(ctk.CTk):
             messagebox.showerror("Error", "Please provide a URL")
             return
 
-        self.download_btn.configure(state="disabled", text="Downloading...")
+        self.download_btn.configure(state="disabled", text="⬇️ Downloading...")
         self.progress_bar.set(0)
         self.progress_bar.configure(mode="indeterminate")
         self.progress_bar.start()
+        self.progress_percent.configure(text="0%")
+        self.progress_status.configure(text="Starting download...", text_color="gray")
+        # Reset stats
+        self.stat_speed.configure(text="-")
+        self.stat_eta.configure(text="-")
+        self.stat_size.configure(text="-")
         
         thread = threading.Thread(target=self.run_download)
         thread.daemon = True
@@ -403,6 +804,7 @@ class YouTubeDownloaderApp(ctk.CTk):
                 'quiet': True,
                 'no_warnings': True,
                 'progress_hooks': [self.progress_hook],
+                'logger': MyLogger(self),
                 'noplaylist': not download_playlist,
                 # VPS Options
                 'geo_bypass': True,
@@ -455,7 +857,11 @@ class YouTubeDownloaderApp(ctk.CTk):
                     'merge_output_format': 'mp4',
                     'outtmpl': '%(playlist_title)s/%(title)s.%(ext)s' if download_playlist else '%(title)s.%(ext)s',
                 })
-                self.log_message(f"[Start] Downloading Video ({quality})...")
+                title_msg = f": {self.current_video_title}" if self.current_video_title else ""
+                self.log_message(f"[Start] Downloading Video ({quality}){title_msg}...")
+                if self.current_video_title:
+                    title_display = self.current_video_title[:50] + "..." if len(self.current_video_title) > 50 else self.current_video_title
+                    self.progress_status.configure(text=f"Downloading: {title_display}", text_color="gray")
 
             # Audio Mode
             else:
@@ -471,15 +877,29 @@ class YouTubeDownloaderApp(ctk.CTk):
                         'preferredquality': audio_map.get(quality_val, '0'),
                     }],
                 })
-                self.log_message(f"[Start] Downloading Audio ({quality})...")
+                title_msg = f": {self.current_video_title}" if self.current_video_title else ""
+                self.log_message(f"[Start] Downloading Audio ({quality}){title_msg}...")
+                if self.current_video_title:
+                    self.progress_status.configure(text=f"Downloading: {self.current_video_title[:50]}...", text_color="gray")
 
             # Start Download
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 self.log_message(f"Processing: {url}")
                 ydl.download([url])
             
-            self.log_message("[Success] Download Completed!")
-            messagebox.showinfo("Success", "Download Completed Successfully!")
+            title_msg = f" - {self.current_video_title}" if self.current_video_title else ""
+            self.log_message(f"[Success] Download Completed!{title_msg}")
+            self.progress_bar.set(1.0)
+            self.progress_percent.configure(text="100%")
+            
+            completed_text = "Download completed!"
+            if self.current_video_title:
+                completed_text = f"Downloaded: {self.current_video_title[:40]}"
+                if len(self.current_video_title) > 40:
+                    completed_text += "..."
+            self.progress_status.configure(text=completed_text, text_color="#2ECC71")
+            
+            messagebox.showinfo("Success", f"Download Completed Successfully!\n\n{self.current_video_title if self.current_video_title else 'File downloaded'}")
 
         except Exception as e:
             error_msg = str(e)
@@ -506,10 +926,9 @@ class YouTubeDownloaderApp(ctk.CTk):
                 messagebox.showerror("Error", f"Download Failed:\n{error_msg}")
         
         finally:
-            self.download_btn.configure(state="normal", text="Start Download")
+            self.download_btn.configure(state="normal", text="⬇️ Start Download")
             self.progress_bar.stop()
             self.progress_bar.configure(mode="determinate")
-            self.progress_bar.set(1)
 
     def progress_hook(self, d):
         if d['status'] == 'downloading':
@@ -534,10 +953,16 @@ class YouTubeDownloaderApp(ctk.CTk):
                 else:
                     size_str = "N/A"
 
-                self.stat_speed.configure(text=f"Speed: {speed}")
-                self.stat_eta.configure(text=f"ETA: {eta}")
-                self.stat_size.configure(text=f"Size: {size_str}")
-
+                # Update stat cards (new format)
+                self.stat_speed.configure(text=speed if speed != 'N/A' else "-")
+                self.stat_eta.configure(text=eta if eta != 'N/A' else "-")
+                self.stat_size.configure(text=size_str if size_str != 'N/A' else "-")
+                
+                # Update progress percentage
+                percent = int(p * 100)
+                self.progress_percent.configure(text=f"{percent}%")
+                self.progress_status.configure(text="Downloading...", text_color="gray")
+                
                 self.progress_bar.configure(mode="determinate")
             except Exception as e:
                 # print(e)
@@ -547,188 +972,10 @@ class YouTubeDownloaderApp(ctk.CTk):
             self.log_message("Download finished. Processing/Converting...")
             self.progress_bar.configure(mode="indeterminate")
             self.progress_bar.start()
-            self.stat_speed.configure(text="Speed: -")
-            self.stat_eta.configure(text="ETA: Complete")
+            self.stat_speed.configure(text="-")
+            self.stat_eta.configure(text="Complete")
+            self.progress_status.configure(text="Processing...", text_color="#F39C12")
 
-    def on_cookie_source_change(self, choice):
-        if choice == "Select File...":
-            self.browse_btn.pack(side="left", padx=5)
-            self.auth_path_label.pack(side="left", padx=5)
-            if not self.auth_path_label.cget("text"):
-                self.browse_cookie_file()
-        else:
-            self.browse_btn.pack_forget()
-            self.auth_path_label.pack_forget()
-            self.custom_cookie_file = None
-
-    def browse_cookie_file(self):
-        filename = filedialog.askopenfilename(title="Select Cookies File", filetypes=[("Text files", "*.txt"), ("All files", "*.*")])
-        if filename:
-            self.custom_cookie_file = filename
-            basename = os.path.basename(filename)
-            self.auth_path_label.configure(text=basename if len(basename) < 20 else basename[:17]+"...")
-        elif not self.custom_cookie_file:
-            self.cookie_source_var.set("None")
-            self.on_cookie_source_change("None")
-
-    def start_download_thread(self):
-        url = self.url_var.get().strip()
-        if not url:
-            messagebox.showerror("Error", "Please provide a URL")
-            return
-
-        self.download_btn.configure(state="disabled", text="Downloading...")
-        self.progress_bar.set(0)
-        self.progress_bar.configure(mode="indeterminate")
-        self.progress_bar.start()
-        
-        thread = threading.Thread(target=self.run_download)
-        thread.daemon = True
-        thread.start()
-
-    def run_download(self):
-        try:
-            url = self.url_var.get().strip()
-            mode = self.mode_var.get()
-            quality = self.quality_var.get()
-            playlist_choice = self.playlist_option_var.get()
-            cookie_source = self.cookie_source_var.get()
-            
-            # Determine if we are downloading playlist
-            download_playlist = False
-            if 'list=' in url and playlist_choice == 'playlist':
-                download_playlist = True
-            
-            # Configure Options
-            ydl_opts = {
-                'quiet': True,
-                'no_warnings': True,
-                'progress_hooks': [self.progress_hook],
-                'logger': MyLogger(self),
-                'noplaylist': not download_playlist,
-                # VPS Options
-                'geo_bypass': True,
-                'retries': 10,
-                'sleep_interval': 1,
-            }
-
-            # === Authentication Logic ===
-            if cookie_source == "Select File..." and self.custom_cookie_file:
-                if os.path.exists(self.custom_cookie_file):
-                    ydl_opts['cookiefile'] = self.custom_cookie_file
-                    self.log_message(f"[Auth] Using Cookie File: {os.path.basename(self.custom_cookie_file)}")
-                else:
-                    self.log_message(f"[Warning] Selected cookie file not found!")
-            
-            elif cookie_source in ["Chrome", "Firefox", "Edge", "Opera", "Brave"]:
-                browser_map = {
-                    "Chrome": "chrome", "Firefox": "firefox", "Edge": "edge", 
-                    "Opera": "opera", "Brave": "brave"
-                }
-                browser_key = browser_map.get(cookie_source)
-                if browser_key:
-                    ydl_opts['cookiesfrombrowser'] = (browser_key,)
-                    self.log_message(f"[Auth] Extracting cookies from {cookie_source}...")
-            
-            elif os.path.exists(self.cookies_file) and cookie_source == "None":
-                 pass
-
-            # Video Mode
-            if mode == "video":
-                quality_map = {
-                    'Best': 'bestvideo+bestaudio/best',
-                    '2160p': 'bestvideo[height<=2160]+bestaudio/best',
-                    '1440p': 'bestvideo[height<=1440]+bestaudio/best',
-                    '1080p': 'bestvideo[height<=1080]+bestaudio/best',
-                    '720p': 'bestvideo[height<=720]+bestaudio/best',
-                    '480p': 'bestvideo[height<=480]+bestaudio/best',
-                    '360p': 'bestvideo[height<=360]+bestaudio/best',
-                }
-                format_str = quality_map.get(quality, 'bestvideo+bestaudio/best')
-                ydl_opts.update({
-                    'format': format_str,
-                    'merge_output_format': 'mp4',
-                    'outtmpl': '%(playlist_title)s/%(title)s.%(ext)s' if download_playlist else '%(title)s.%(ext)s',
-                })
-                self.log_message(f"[Start] Downloading Video ({quality})...")
-
-            # Audio Mode
-            else:
-                quality_val = quality.split()[0] # "320 kbps" -> "320"
-                audio_map = {'320': '0', '256': '1', '192': '2', '128': '5', '96': '6', '64': '8'}
-                
-                ydl_opts.update({
-                    'format': 'bestaudio/best',
-                    'outtmpl': '%(playlist_title)s/%(title)s.%(ext)s' if download_playlist else '%(title)s.%(ext)s',
-                    'postprocessors': [{
-                        'key': 'FFmpegExtractAudio',
-                        'preferredcodec': 'mp3',
-                        'preferredquality': audio_map.get(quality_val, '0'),
-                    }],
-                })
-                self.log_message(f"[Start] Downloading Audio ({quality})...")
-
-            # Start Download
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                self.log_message(f"Processing: {url}")
-                ydl.download([url])
-            
-            self.log_message("[Success] Download Completed!")
-            messagebox.showinfo("Success", "Download Completed Successfully!")
-
-        except Exception as e:
-            error_msg = str(e)
-            self.log_message(f"[Error] {error_msg}")
-            
-            # Check for specific browser cookie error
-            if "Could not copy" in error_msg and "cookie database" in error_msg:
-                messagebox.showerror("Browser Error", 
-                    f"Could not access {self.cookie_source_var.get()} cookies.\n\n"
-                    "Please CLOSE your browser completely and try again.\n"
-                    "(The database is locked while the browser is open)"
-                )
-            
-            # Check for DPAPI/Decryption error
-            elif "decrypt" in error_msg and "DPAPI" in error_msg:
-                messagebox.showerror("Encryption Error", 
-                    f"Could not decrypt {self.cookie_source_var.get()} cookies.\n\n"
-                    "Chrome's encryption is blocking access.\n"
-                    "Workarounds:\n"
-                    "1. Try using Firefox (it works better)\n"
-                    "2. Or select 'Select File...' and use a manually exported cookies.txt"
-                )
-            else:
-                messagebox.showerror("Error", f"Download Failed:\n{error_msg}")
-        
-        finally:
-            self.download_btn.configure(state="normal", text="Start Download")
-            self.progress_bar.stop()
-            self.progress_bar.configure(mode="determinate")
-            self.progress_bar.set(1)
-
-    def progress_hook(self, d):
-        if d['status'] == 'downloading':
-            try:
-                # Update progress bar
-                if 'total_bytes' in d:
-                    p = d['downloaded_bytes'] / d['total_bytes']
-                    self.progress_bar.set(p)
-                    self.progress_bar.configure(mode="determinate")
-                
-                # Log progress (throttled)
-                percent = d.get('_percent_str', 'N/A')
-                speed = d.get('_speed_str', 'N/A')
-                # We don't want to spam the log, so maybe just last line update?
-                # For this simple GUI, we will just print to console which redirects to our log
-                # But tkinter isn't thread safe for UI updates from hook
-                # So we won't spam the text box, just the progress bar
-            except:
-                pass
-        
-        elif d['status'] == 'finished':
-            self.log_message("Download finished. Processing/Converting...")
-            self.progress_bar.configure(mode="indeterminate")
-            self.progress_bar.start()
 
 if __name__ == "__main__":
     app = YouTubeDownloaderApp()
