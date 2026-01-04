@@ -21,6 +21,60 @@ except ImportError:
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
 
+class PlaylistSelectionDialog(ctk.CTkToplevel):
+    def __init__(self, parent, video_list, title="Select Videos"):
+        super().__init__(parent)
+        self.title(title)
+        self.geometry("600x600")
+        self.result = None
+        
+        self.video_list = video_list # List of dicts: {'id': 1, 'title': '...'}
+        self.check_vars = []
+        
+        # Header
+        self.label = ctk.CTkLabel(self, text=f"Select Videos to Download ({len(video_list)} found)", font=ctk.CTkFont(size=16, weight="bold"))
+        self.label.pack(pady=10)
+        
+        # Buttons Frame
+        self.btn_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.btn_frame.pack(fill="x", padx=20, pady=5)
+        
+        self.select_all_btn = ctk.CTkButton(self.btn_frame, text="Select All", width=100, command=self.select_all)
+        self.select_all_btn.pack(side="left", padx=5)
+        
+        self.deselect_all_btn = ctk.CTkButton(self.btn_frame, text="Deselect All", width=100, command=self.deselect_all)
+        self.deselect_all_btn.pack(side="left", padx=5)
+        
+        # Scrollable List
+        self.scroll_frame = ctk.CTkScrollableFrame(self)
+        self.scroll_frame.pack(fill="both", expand=True, padx=20, pady=10)
+        
+        for i, video in enumerate(self.video_list):
+            var = ctk.BooleanVar(value=True) # Default selected
+            self.check_vars.append(var)
+            idx = i + 1
+            title = video.get('title', 'Unknown')
+            chk = ctk.CTkCheckBox(self.scroll_frame, text=f"{idx}. {title}", variable=var)
+            chk.pack(anchor="w", pady=2)
+            
+        # Action Buttons
+        self.confirm_btn = ctk.CTkButton(self, text="Confirm Selection", command=self.confirm)
+        self.confirm_btn.pack(pady=20)
+        
+    def select_all(self):
+        for var in self.check_vars: var.set(True)
+        
+    def deselect_all(self):
+        for var in self.check_vars: var.set(False)
+        
+    def confirm(self):
+        selected_indices = []
+        for i, var in enumerate(self.check_vars):
+            if var.get():
+                selected_indices.append(i + 1) # 1-based index for yt-dlp
+        self.result = selected_indices
+        self.destroy()
+
 class MyLogger:
     def __init__(self, gui):
         self.gui = gui
@@ -106,6 +160,18 @@ class YouTubeDownloaderApp(ctk.CTk):
             hover_color=("gray80", "gray25")
         )
         self.theme_btn.pack(side="right")
+        
+        # History Button
+        self.history_btn = ctk.CTkButton(
+            self.header_frame,
+            text="📜",
+            width=40,
+            height=30,
+            command=self.show_history,
+            fg_color="transparent",
+            hover_color=("gray80", "gray25")
+        )
+        self.history_btn.pack(side="right", padx=(0, 5))
 
         # === Scrollable Main Frame ===
         self.main_scrollable = ctk.CTkScrollableFrame(self)
@@ -259,6 +325,16 @@ class YouTubeDownloaderApp(ctk.CTk):
         )
         self.dl_playlist_btn.pack(side="left", padx=(0, 15))
         
+        self.select_videos_btn = ctk.CTkButton(
+            self.playlist_frame,
+            text="Select Videos...",
+            width=100,
+            command=self.fetch_playlist_and_select,
+            fg_color="gray",
+            hover_color="gray25"
+        )
+        self.select_videos_btn.pack(side="left", padx=(0, 15))
+        
         # === Settings Card ===
         self.settings_card = ctk.CTkFrame(self.main_scrollable, corner_radius=10)
         self.settings_card.grid(row=3, column=0, padx=20, pady=8, sticky="ew")
@@ -348,6 +424,21 @@ class YouTubeDownloaderApp(ctk.CTk):
             command=self.start_download_thread
         )
         self.download_btn.pack(fill="x", pady=(0, 10))
+        
+        # Open Download Folder Button (Initially Hidden/Disabled or Just Disabled)
+        self.open_folder_btn = ctk.CTkButton(
+            self.action_frame,
+            text="📂 Open Download Folder",
+            font=ctk.CTkFont(size=14),
+            height=40,
+            fg_color="green",
+            hover_color="darkgreen",
+            state="disabled",
+            command=self.open_download_folder
+        )
+        # We can pack it but keep it disabled, or pack_forget until needed. 
+        # Making it visible but disabled is better UX for discovery.
+        self.open_folder_btn.pack(fill="x", pady=(0, 0))
         
         # === Stats Frame ===
         self.stats_frame = ctk.CTkFrame(self.main_scrollable, corner_radius=10)
@@ -466,6 +557,8 @@ class YouTubeDownloaderApp(ctk.CTk):
         
         # Initial Auth State
         self.custom_cookie_file = None
+        self.selected_playlist_items = None # Format: "1,2,5" (string) or list of indices
+        self.download_history = [] # List of {"title": "...", "date": "..."}
         
         # Load Config
         self.load_config()
@@ -517,11 +610,11 @@ class YouTubeDownloaderApp(ctk.CTk):
                 # Restore Download Folder
                 if saved_folder and os.path.exists(saved_folder):
                     self.download_folder = saved_folder
-                    # Note: UI label update happens in create_widgets if called after, 
-                    # but create_widgets is called BEFORE load_config in init.
-                    # So we need to update UI here if it exists.
                     if hasattr(self, 'save_loc_path_label'):
                          self.update_save_loc_label()
+                
+                # Restore History
+                self.download_history = data.get('download_history', [])
                 
             except Exception as e:
                 self.log_message(f"[Config] Error loading config: {e}")
@@ -535,13 +628,46 @@ class YouTubeDownloaderApp(ctk.CTk):
             data = {
                 'cookie_source': self.cookie_source_var.get(),
                 'cookie_file': self.custom_cookie_file if self.custom_cookie_file else '',
-                'download_folder': self.download_folder if hasattr(self, 'download_folder') else ''
+                'download_folder': self.download_folder if hasattr(self, 'download_folder') else '',
+                'download_history': self.download_history
             }
             with open(self.config_file, 'w') as f:
                 json.dump(data, f)
             self.log_message(f"[Config] Settings saved.") 
         except Exception as e:
             self.log_message(f"[Config] Error saving config: {e}")
+
+    def add_to_history(self, title):
+        """Add a video title to history"""
+        import datetime
+        now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+        
+        # Avoid duplicates at top
+        if self.download_history and self.download_history[0]['title'] == title:
+            return
+            
+        self.download_history.insert(0, {'title': title, 'date': now})
+        
+        # Limit to 10
+        if len(self.download_history) > 10:
+            self.download_history.pop()
+            
+        self.save_config()
+
+    def show_history(self):
+        """Show simple history dialog"""
+        if not self.download_history:
+            messagebox.showinfo("History", "No downloads yet.")
+            return
+            
+        history_text = ""
+        for item in self.download_history:
+            # Truncate title
+            title = item['title']
+            if len(title) > 40: title = title[:37] + "..."
+            history_text += f"[{item['date']}] {title}\n"
+            
+        messagebox.showinfo("Download History (Last 10)", history_text)
 
     def browse_download_folder(self):
         folder = filedialog.askdirectory(title="Select Download Folder")
@@ -857,6 +983,89 @@ class YouTubeDownloaderApp(ctk.CTk):
              self.log_message(f"[CRITICAL ERROR] browse_cookie_file failed: {e}")
              messagebox.showerror("Error", f"Failed to browse file: {e}")
 
+    def open_download_folder(self):
+        """Open the current download folder in file explorer"""
+        path = self.download_folder
+        if not os.path.exists(path):
+            messagebox.showerror("Error", "Download folder does not exist!")
+            return
+            
+        try:
+            if sys.platform == 'win32':
+                os.startfile(path)
+            elif sys.platform == 'darwin':
+                subprocess.Popen(['open', path])
+            else:
+                subprocess.Popen(['xdg-open', path])
+        except Exception as e:
+            self.log_message(f"[Error] Could not open folder: {e}")
+
+    def fetch_playlist_and_select(self):
+        url = self.url_var.get().strip()
+        if not url:
+            return
+            
+        self.select_videos_btn.configure(text="Loading...", state="disabled")
+        
+        def fetch_task():
+            try:
+                ydl_opts = {
+                    'quiet': True,
+                    'extract_flat': True, # Fast check
+                    'no_warnings': True,
+                }
+                
+                # Check cookies
+                cookie_source = self.cookie_source_var.get()
+                if cookie_source == "Select File..." and self.custom_cookie_file and os.path.exists(self.custom_cookie_file):
+                    ydl_opts['cookiefile'] = self.custom_cookie_file
+                elif cookie_source in ["Chrome", "Firefox", "Edge", "Opera", "Brave"]:
+                     browser_map = {"Chrome": "chrome", "Firefox": "firefox", "Edge": "edge", "Opera": "opera", "Brave": "brave"}
+                     key = browser_map.get(cookie_source)
+                     if key: ydl_opts['cookiesfrombrowser'] = (key,)
+
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(url, download=False)
+                    if 'entries' in info:
+                        # It is a playlist
+                        entries = list(info['entries'])
+                        self.after(0, lambda: self.show_selection_dialog(entries))
+                    else:
+                        # Single video?
+                        self.log_message("[Info] Not a playlist or no entries found.")
+                        self.after(0, lambda: self.select_videos_btn.configure(text="Select Videos...", state="normal"))
+                        
+            except Exception as e:
+                self.log_message(f"[Error] Failed to fetch playlist: {e}")
+                self.after(0, lambda: self.select_videos_btn.configure(text="Select Videos...", state="normal"))
+
+        threading.Thread(target=fetch_task, daemon=True).start()
+
+    def show_selection_dialog(self, video_list):
+        self.select_videos_btn.configure(text="Select Videos...", state="normal")
+        
+        dialog = PlaylistSelectionDialog(self, video_list, title="Select Videos to Download")
+        # Center the dialog
+        dialog.geometry(f"+{self.winfo_x()+50}+{self.winfo_y()+50}")
+        dialog.grab_set() # Modal
+        self.wait_window(dialog)
+        
+        if dialog.result is not None:
+             self.selected_playlist_items = dialog.result
+             count = len(self.selected_playlist_items)
+             if count == 0:
+                 self.select_videos_btn.configure(text="Nothing Selected", fg_color="gray")
+                 self.selected_playlist_items = None
+             elif count == len(video_list):
+                 self.select_videos_btn.configure(text="All Selected", fg_color="green")
+                 self.selected_playlist_items = None # Reset to download all
+             else:
+                 self.select_videos_btn.configure(text=f"Selected ({count})", fg_color="green")
+                 self.playlist_option_var.set("playlist") # Force playlist mode
+        else:
+             # Cancelled
+             pass
+
     def start_download_thread(self):
         url = self.url_var.get().strip()
         if not url:
@@ -864,6 +1073,10 @@ class YouTubeDownloaderApp(ctk.CTk):
             return
 
         self.download_btn.configure(state="disabled", text="⬇️ Downloading...")
+        # Disable Open Folder button while downloading
+        if hasattr(self, 'open_folder_btn'):
+            self.open_folder_btn.configure(state="disabled")
+            
         self.progress_bar.set(0)
         self.progress_bar.configure(mode="indeterminate")
         self.progress_bar.start()
@@ -905,6 +1118,12 @@ class YouTubeDownloaderApp(ctk.CTk):
                 'retries': 10,
                 'sleep_interval': 1,
             }
+            
+            # Apply Playlist Selection
+            if download_playlist and self.selected_playlist_items:
+                 items_str = ",".join(map(str, self.selected_playlist_items))
+                 ydl_opts['playlist_items'] = items_str
+                 self.log_message(f"[Playlist] Downloading selected items: {items_str}")
 
             # Set Download Path
             if hasattr(self, 'download_folder') and self.download_folder and os.path.exists(self.download_folder):
@@ -993,6 +1212,14 @@ class YouTubeDownloaderApp(ctk.CTk):
                     completed_text += "..."
             self.progress_status.configure(text=completed_text, text_color="#2ECC71")
             
+            # Enable Open Folder Button
+            if hasattr(self, 'open_folder_btn'):
+                self.open_folder_btn.configure(state="normal")
+            
+            # Add to History
+            if self.current_video_title:
+                self.add_to_history(self.current_video_title)
+            
             messagebox.showinfo("Success", f"Download Completed Successfully!\n\n{self.current_video_title if self.current_video_title else 'File downloaded'}")
 
         except Exception as e:
@@ -1055,7 +1282,17 @@ class YouTubeDownloaderApp(ctk.CTk):
                 # Update progress percentage
                 percent = int(p * 100)
                 self.progress_percent.configure(text=f"{percent}%")
-                self.progress_status.configure(text="Downloading...", text_color="gray")
+                
+                # STATUS MESSAGE logic
+                status_msg = "Downloading..."
+                
+                # Check for playlist info
+                if 'playlist_index' in d and 'playlist_count' in d:
+                    idx = d['playlist_index']
+                    count = d['playlist_count']
+                    status_msg = f"[Video {idx}/{count}] Downloading..."
+                
+                self.progress_status.configure(text=status_msg, text_color="gray")
                 
                 self.progress_bar.configure(mode="determinate")
             except Exception as e:
