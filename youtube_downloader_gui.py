@@ -768,11 +768,25 @@ class YouTubeDownloaderApp(ctk.CTk):
                         except:
                             pass
 
+                    # Extract Available Qualities
+                    available_qualities = ["Best"]
+                    if 'formats' in info:
+                        formats = info['formats']
+                        heights = set()
+                        for f in formats:
+                            # Filter for video streams
+                            if f.get('vcodec') != 'none' and f.get('height'):
+                                heights.add(f['height'])
+                        
+                        sorted_heights = sorted(list(heights), reverse=True)
+                        available_qualities.extend([f"{h}p" for h in sorted_heights])
+
                     return {
                         'title': title,
                         'channel': channel,
                         'duration': duration_str,
-                        'thumbnail_data': thumbnail_data
+                        'thumbnail_data': thumbnail_data,
+                        'available_qualities': available_qualities
                     }
         except Exception as e:
             self.log_message(f"[Info] Could not fetch video info: {str(e)[:50]}")
@@ -812,6 +826,14 @@ class YouTubeDownloaderApp(ctk.CTk):
              filename = filename[:57] + "..."
         self.video_filename_label.configure(text=f"File: {filename}")
         
+        # Update Quality Options if available
+        if 'available_qualities' in info and info['available_qualities']:
+            # Only update if in Video mode
+            if self.mode_var.get() == "video":
+                qualities = info['available_qualities']
+                self.quality_menu.configure(values=qualities)
+                self.quality_menu.set(qualities[0]) if qualities else None
+
         # Display Thumbnail
         if HAS_PIL and info.get('thumbnail_data'):
             try:
@@ -1155,16 +1177,17 @@ class YouTubeDownloaderApp(ctk.CTk):
 
             # Video Mode
             if mode == "video":
-                quality_map = {
-                    'Best': 'bestvideo+bestaudio/best',
-                    '2160p': 'bestvideo[height<=2160]+bestaudio/best',
-                    '1440p': 'bestvideo[height<=1440]+bestaudio/best',
-                    '1080p': 'bestvideo[height<=1080]+bestaudio/best',
-                    '720p': 'bestvideo[height<=720]+bestaudio/best',
-                    '480p': 'bestvideo[height<=480]+bestaudio/best',
-                    '360p': 'bestvideo[height<=360]+bestaudio/best',
-                }
-                format_str = quality_map.get(quality, 'bestvideo+bestaudio/best')
+                # Check for dynamic "Height + p" format (e.g. "540p", "480p")
+                height_match = re.match(r'(\d+)p', quality)
+                if height_match:
+                    h = height_match.group(1)
+                    format_str = f'bestvideo[height<={h}]+bestaudio/best[height<={h}]/best'
+                elif quality == 'Best':
+                    format_str = 'bestvideo+bestaudio/best'
+                else:
+                    # Fallback
+                    format_str = 'bestvideo+bestaudio/best'
+                
                 ydl_opts.update({
                     'format': format_str,
                     'merge_output_format': 'mp4',
