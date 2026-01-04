@@ -18,7 +18,7 @@ IF EXIST "*.spec" DEL /Q "*.spec"
 :: Build EXE
 ECHO [INFO] Building executable... This may take a minute.
 ECHO.
-python -m PyInstaller --noconfirm --onefile --windowed --name "YT-Downloader" --icon="icon.ico" --collect-all customtkinter youtube_downloader_gui.py
+python -m PyInstaller --noconfirm --onefile --windowed --name "YT-Downloader" --icon="icon.ico" --version-file="version_info.txt" --collect-all customtkinter youtube_downloader_gui.py
 
 IF %ERRORLEVEL% NEQ 0 (
     ECHO.
