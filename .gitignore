@@ -25,13 +25,13 @@ dist/
 
 # Internal Documentation
 planning_docs/
-RELEASE_NOTES.md
 
 
 eggs/
 .eggs/
 lib/
 lib64/
+RELEASE_NOTES.md
 parts/
 sdist/
 var/

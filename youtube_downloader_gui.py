@@ -98,9 +98,9 @@ class YouTubeDownloaderApp(ctk.CTk):
 
         # Configure window
         self.title("YouTube Downloader Pro")
-        self.geometry("900x950")
+        self.geometry("800x800")
         self.resizable(True, True)
-        self.minsize(700, 750)
+        self.minsize(500, 500)
 
         # Variables
         self.url_var = tk.StringVar()
