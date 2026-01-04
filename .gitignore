@@ -25,6 +25,7 @@ dist/
 
 # Internal Documentation
 planning_docs/
+RELEASE_NOTES.md
 eggs/
 .eggs/
 lib/
