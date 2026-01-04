@@ -9,6 +9,13 @@ import yt_dlp
 import re
 import time
 import random
+try:
+    from PIL import Image
+    from io import BytesIO
+    import urllib.request
+    HAS_PIL = True
+except ImportError:
+    HAS_PIL = False
 
 # Set theme
 ctk.set_appearance_mode("Dark")
@@ -214,6 +221,16 @@ class YouTubeDownloaderApp(ctk.CTk):
             anchor="w"
         )
         self.video_meta_label.pack(anchor="w")
+
+        self.video_filename_label = ctk.CTkLabel(
+            self.video_info_container,
+            text="File: -",
+            font=ctk.CTkFont(family="Consolas", size=11),
+            text_color="#3498DB",
+            anchor="w",
+            wraplength=600
+        )
+        self.video_filename_label.pack(anchor="w", pady=(2, 0))
 
         # === Playlist Options (Hidden by default) ===
         self.playlist_frame = ctk.CTkFrame(self.main_scrollable, corner_radius=10, fg_color=("gray95", "gray17"))
@@ -613,16 +630,34 @@ class YouTubeDownloaderApp(ctk.CTk):
                     else:
                         duration_str = f"{minutes}:{seconds:02d}"
                     
+                    # Fetch thumbnail
+                    thumbnail_data = None
+                    if HAS_PIL and 'thumbnail' in info:
+                        try:
+                            thumb_url = info['thumbnail']
+                            with urllib.request.urlopen(thumb_url) as u:
+                                thumbnail_data = u.read()
+                        except:
+                            pass
+
                     return {
                         'title': title,
                         'channel': channel,
-                        'duration': duration_str
+                        'duration': duration_str,
+                        'thumbnail_data': thumbnail_data
                     }
         except Exception as e:
             self.log_message(f"[Info] Could not fetch video info: {str(e)[:50]}")
             return None
         return None
     
+    def sanitize_filename(self, name):
+        """Sanitize filename to match yt-dlp behavior roughly"""
+        # Replace forbidden chars
+        name = re.sub(r'[\\/*?:"<>|]', '', name)
+        # Remove leading/trailing spaces and dots
+        return name.strip('. ')
+
     def display_video_info(self, info):
         """Display video information in the info card"""
         if not info:
@@ -640,6 +675,52 @@ class YouTubeDownloaderApp(ctk.CTk):
             title_text = title_text[:67] + "..."
         self.video_title_label.configure(text=f"Title: {title_text}")
         self.video_meta_label.configure(text=f"Channel: {info['channel']} | Duration: {info['duration']}")
+        
+        # Update File Name Preview
+        sanitized_title = self.sanitize_filename(info['title'])
+        ext = "mp4" if self.mode_var.get() == "video" else "mp3"
+        filename = f"{sanitized_title}.{ext}"
+        if len(filename) > 60:
+             filename = filename[:57] + "..."
+        self.video_filename_label.configure(text=f"File: {filename}")
+        
+        # Display Thumbnail
+        if HAS_PIL and info.get('thumbnail_data'):
+            try:
+                img_data = info['thumbnail_data']
+                pil_image = Image.open(BytesIO(img_data))
+                # Resize (keep aspect ratio approx 16:9)
+                ctk_image = ctk.CTkImage(light_image=pil_image, dark_image=pil_image, size=(160, 90))
+                
+                # Create label if not exists
+                if not hasattr(self, 'video_thumbnail_label'):
+                    self.video_thumbnail_label = ctk.CTkLabel(self.video_info_container, text="")
+                    self.video_thumbnail_label.pack(side="left", padx=(0, 15), anchor="n")
+                    
+                    # Repack others to right
+                    # We need to restructure slightly: Container -> [Thumb] [TextFrame]
+                    # But simpler: Just pack Thumb left, and pack other labels inside a new frame?
+                    # Current structure: video_info_container -> title, meta, filename
+                    
+                    # HACK: If we haven't structured it, let's repack everything
+                    self.video_title_label.pack_forget()
+                    self.video_meta_label.pack_forget()
+                    self.video_filename_label.pack_forget()
+                    
+                    self.info_text_frame = ctk.CTkFrame(self.video_info_container, fg_color="transparent")
+                    self.info_text_frame.pack(side="left", fill="both", expand=True)
+                    
+                    self.video_title_label.pack(in_=self.info_text_frame, anchor="w", pady=(0, 5))
+                    self.video_meta_label.pack(in_=self.info_text_frame, anchor="w")
+                    self.video_filename_label.pack(in_=self.info_text_frame, anchor="w", pady=(2, 0))
+
+                self.video_thumbnail_label.configure(image=ctk_image)
+                self.video_thumbnail_label.image = ctk_image # Keep reference
+                
+            except Exception as e:
+                self.log_message(f"[Error] Could not load thumbnail: {e}")
+        
+        # Show the card (adjust row based on playlist detection)
         
         # Show the card (adjust row based on playlist detection)
         url = self.url_var.get()
@@ -685,6 +766,15 @@ class YouTubeDownloaderApp(ctk.CTk):
             self.quality_var.set("320 kbps")
         
         self.quality_menu.configure(values=values)
+        
+        # Update filename preview if video info is shown
+        if self.current_video_title and hasattr(self, 'video_filename_label'):
+            sanitized_title = self.sanitize_filename(self.current_video_title)
+            ext = "mp4" if mode == "video" else "mp3"
+            filename = f"{sanitized_title}.{ext}"
+            if len(filename) > 60:
+                 filename = filename[:57] + "..."
+            self.video_filename_label.configure(text=f"File: {filename}")
 
     def on_url_change(self, *args):
         url = self.url_var.get()
@@ -804,8 +894,10 @@ class YouTubeDownloaderApp(ctk.CTk):
                 'quiet': True,
                 'no_warnings': True,
                 'progress_hooks': [self.progress_hook],
+                'postprocessor_hooks': [self.post_processor_hook],
                 'logger': MyLogger(self),
                 'noplaylist': not download_playlist,
+                'paths': {'home': self.download_folder} if hasattr(self, 'download_folder') and self.download_folder else {},
                 # VPS Options
                 'geo_bypass': True,
                 'retries': 10,
@@ -976,6 +1068,15 @@ class YouTubeDownloaderApp(ctk.CTk):
             self.stat_eta.configure(text="Complete")
             self.progress_status.configure(text="Processing...", text_color="#F39C12")
 
+
+    def post_processor_hook(self, d):
+        if d['status'] == 'started':
+            self.progress_status.configure(text="Processing / Converting...", text_color="#F39C12")
+            # If we know the specific post-processor, we can be more specific
+            # e.g. "Merging video and audio..." or "Converting to MP3..."
+            
+        elif d['status'] == 'finished':
+             self.progress_status.configure(text="Finalizing...", text_color="#F39C12")
 
 if __name__ == "__main__":
     app = YouTubeDownloaderApp()

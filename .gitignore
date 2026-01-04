@@ -18,10 +18,13 @@ __pycache__/
 *$py.class
 *.so
 .Python
+# Build artifacts
 build/
-develop-eggs/
 dist/
-downloads/
+*.spec
+
+# Internal Documentation
+planning_docs/
 eggs/
 .eggs/
 lib/
