@@ -912,13 +912,15 @@ class YouTubeDownloaderApp(ctk.CTk):
             self.log_frame.grid(row=8, column=0, padx=20, pady=(0, 20), sticky="ew") 
 
     def check_ffmpeg(self):
-        # 1. Check PATH
-        if shutil.which('ffmpeg'):
-            self.log_message("[System] FFmpeg found in PATH.")
-            self.ffmpeg_path = "ffmpeg"
-            return
+        # 1. Check Project Bin (Portable)
+        project_bin = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'bin')
+        project_ffmpeg = os.path.join(project_bin, "ffmpeg.exe")
+        if os.path.exists(project_ffmpeg):
+             self.log_message(f"[System] FFmpeg found in project bin: {project_ffmpeg}")
+             self.ffmpeg_path = project_ffmpeg
+             return
 
-        # 2. Check Local Bin
+        # 2. Check AppData Local Bin
         app_data = os.getenv('APPDATA')
         if not app_data: app_data = os.path.expanduser("~")
         self.local_bin_dir = os.path.join(app_data, "YT-Downloader", "bin")
@@ -929,7 +931,13 @@ class YouTubeDownloaderApp(ctk.CTk):
             self.ffmpeg_path = local_ffmpeg
             return
 
-        # 3. Not Found
+        # 3. Check PATH
+        if shutil.which('ffmpeg'):
+            self.log_message("[System] FFmpeg found in PATH.")
+            self.ffmpeg_path = "ffmpeg"
+            return
+
+        # 4. Not Found
         self.ffmpeg_path = None
         self.log_message("[WARNING] FFmpeg not found! Audio conversion will fail.")
         self.show_ffmpeg_warning()

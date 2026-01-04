@@ -1,0 +1,5 @@
+node_modules
+server/temp_downloads
+.git
+client
+website

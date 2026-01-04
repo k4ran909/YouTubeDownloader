@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YT Downloader Pro - High Quality Video & Audio</title>
+    <meta name="description"
+        content="Download YouTube videos in 4K and audio in 320kbps MP3. Free, open-source, and privacy-focused downloader for Windows.">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@300;400;600&display=swap"
+        rel="stylesheet">
+    <!-- Ionicons for Icons -->
+    <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+</head>
+
+<body>
+
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="container">
+            <a href="#" class="logo">
+                <ion-icon name="cloud-download-outline"></ion-icon>
+                YT Downloader <span class="badge">PRO</span>
+            </a>
+            <div class="nav-links">
+                <a href="#features">Features</a>
+                <a href="#how-it-works">How It Works</a>
+                <a href="https://github.com/shohan-001/youtube-downloader" target="_blank" class="github-link"><ion-icon
+                        name="logo-github"></ion-icon> GitHub</a>
+
+                <!-- Cinematic Theme Switcher -->
+                <div class="theme-switch-wrapper">
+                    <div class="theme-switch" id="themeToggle">
+                        <div class="theme-switch-inner"></div>
+                        <div class="theme-switch-icons">
+                            <ion-icon name="sunny" class="text-yellow-400"></ion-icon>
+                            <ion-icon name="moon" class="text-slate-700"></ion-icon>
+                        </div>
+                        <div class="theme-switch-thumb">
+                            <div class="thumb-icon">
+                                <ion-icon name="sunny"></ion-icon>
+                                <ion-icon name="moon"></ion-icon>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <a href="#download" class="btn btn-primary sm">Download</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <header class="hero">
+        <div class="container hero-container">
+            <div class="hero-content">
+                <h1 class="fade-in-up">Download YouTube <br><span class="gradient-text">Videos & Playlists</span></h1>
+                <p class="fade-in-up delay-1">The most powerful, free, and open-source downloader for Windows. No ads,
+                    no limits, just high-quality downloads.</p>
+                <div class="hero-actions fade-in-up delay-2"
+                    style="flex-direction: column; align-items: flex-start; gap: 20px; width: 100%;">
+                    <!-- Input Form -->
+                    <div class="input-group glass"
+                        style="display: flex; gap: 10px; width: 100%; max-width: 500px; padding: 5px; border-radius: 50px; background: rgba(255,255,255,0.05);">
+                        <input type="text" id="urlInput" placeholder="Paste YouTube link here..."
+                            style="flex: 1; background: transparent; border: none; padding: 15px 20px; color: white; font-size: 1rem; outline: none;">
+                        <button id="analyzeBtn" class="btn btn-primary" style="padding: 10px 30px;">
+                            <ion-icon name="search"></ion-icon> Start
+                        </button>
+                    </div>
+
+                    <!-- Result Card (Hidden Initially) -->
+                    <div id="resultCard" class="glass-card"
+                        style="display: none; width: 100%; max-width: 500px; padding: 20px; margin-top: 10px; animation: fadeInUp 0.5s ease;">
+                        <div style="display: flex; gap: 15px;">
+                            <img id="videoThumb" src="" alt="Thumbnail"
+                                style="width: 120px; height: 68px; object-fit: cover; border-radius: 8px;">
+                            <div style="flex: 1; overflow: hidden;">
+                                <h4 id="videoTitle"
+                                    style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 5px;">
+                                    Video Title</h4>
+                                <span id="videoMeta" style="font-size: 0.8rem; color: #a1a1aa;">Duration: 3:45</span>
+                            </div>
+                        </div>
+                        <div style="margin-top: 20px; display: flex; gap: 10px; flex-direction: column;">
+                            <select id="formatSelect"
+                                style="width: 100%; padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.1); outline: none;">
+                                <option>Loading formats...</option>
+                            </select>
+                            <button id="downloadBtn" class="btn btn-primary"
+                                style="width: 100%; justify-content: center;">
+                                <ion-icon name="cloud-download"></ion-icon> Download Now
+                            </button>
+                        </div>
+                        <div id="loadingBar"
+                            style="display: none; margin-top: 15px; width: 100%; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden;">
+                            <div class="progress"
+                                style="width: 50%; height: 100%; background: var(--accent); animation: progress 1s infinite linear;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <p id="statusMsg"
+                        style="font-size: 0.9rem; color: var(--text-muted); margin-top: 10px; height: 20px;"></p>
+                </div>
+
+                <style>
+                    @keyframes progress {
+                        0% {
+                            transform: translateX(-100%);
+                        }
+
+                        100% {
+                            transform: translateX(200%);
+                        }
+                    }
+                </style>
+            </div>
+            <div class="hero-image fade-in-right">
+                <div class="img-wrapper glass">
+                    <img src="assets/app_preview.png" alt="YT Downloader Interface">
+                    <div class="glow-effect"></div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Features Section -->
+    <section id="features" class="features">
+        <div class="container">
+            <div class="section-header">
+                <h2>Why Choose <span class="gradient-text">YT Downloader?</span></h2>
+                <p>Built for speed, quality, and simplicity.</p>
+            </div>
+
+            <div class="features-grid">
+                <div class="feature-card glass-card">
+                    <div class="icon-box blue">
+                        <ion-icon name="videocam"></ion-icon>
+                    </div>
+                    <h3>High Quality Video</h3>
+                    <p>Download videos in 4K, 2K, 1080p, 720p, and more. Choose the quality that fits your needs.</p>
+                </div>
+
+                <div class="feature-card glass-card">
+                    <div class="icon-box purple">
+                        <ion-icon name="musical-notes"></ion-icon>
+                    </div>
+                    <h3>Audio Extractor</h3>
+                    <p>Convert videos to high-quality MP3s (up to 320kbps) automatically. Perfect for music lovers.</p>
+                </div>
+
+                <div class="feature-card glass-card">
+                    <div class="icon-box pink">
+                        <ion-icon name="list"></ion-icon>
+                    </div>
+                    <h3>Playlist Support</h3>
+                    <p>Download entire playlists or select specific videos from a list with just one click.</p>
+                </div>
+
+                <div class="feature-card glass-card">
+                    <div class="icon-box cyan">
+                        <ion-icon name="speedometer"></ion-icon>
+                    </div>
+                    <h3>Fast & Lightweight</h3>
+                    <p>Optimized for performance with multi-threaded downloads. No bloatware or ads.</p>
+                </div>
+
+                <div class="feature-card glass-card">
+                    <div class="icon-box orange">
+                        <ion-icon name="shield-checkmark"></ion-icon>
+                    </div>
+                    <h3>Privacy Focused</h3>
+                    <p>No tracking, no data collection. Runs completely locally on your machine.</p>
+                </div>
+
+                <div class="feature-card glass-card">
+                    <div class="icon-box green">
+                        <ion-icon name="moon"></ion-icon>
+                    </div>
+                    <h3>Modern Dark UI</h3>
+                    <p>Beautiful, easy-to-use interface with a sleek dark mode that's easy on the eyes.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How it works -->
+    <section id="how-it-works" class="steps-section">
+        <div class="container">
+            <div class="section-header">
+                <h2>How It Works</h2>
+            </div>
+            <div class="steps-container">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h3>Paste URL</h3>
+                        <p>Copy any YouTube video or playlist link and paste it into the app.</p>
+                    </div>
+                </div>
+                <div class="step-connector"></div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h3>Select Format</h3>
+                        <p>Choose between Video (MP4) or Audio (MP3) and select your desired quality.</p>
+                    </div>
+                </div>
+                <div class="step-connector"></div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h3>Download</h3>
+                        <p>Click start and watch your content download instantly.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section id="download" class="cta-section">
+        <div class="container">
+            <div class="cta-card glass-card glow-border">
+                <h2>Ready to Start Downloading?</h2>
+                <p>Get the latest version of YT Downloader Pro today.</p>
+                <div class="cta-buttons">
+                    <a href="#" class="btn btn-primary btn-lg">Download for Windows</a>
+                    <span class="version-info">Requires Windows 10/11</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <ion-icon name="cloud-download-outline"></ion-icon> YT Downloader
+                </div>
+                <div class="footer-links">
+                    <a href="#">Privacy Policy</a>
+                    <a href="#">Terms of Service</a>
+                    <a href="https://github.com/shohan-001/youtube-downloader/issues">Support</a>
+                </div>
+                <div class="copyright">
+                    &copy; 2024 Shuhan-001. Open Source Project.
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
