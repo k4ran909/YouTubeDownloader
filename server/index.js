@@ -8,6 +8,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Health check endpoint for uptime monitoring (keeps cloud instance awake)
+app.get('/health', (req, res) => res.send('OK'));
+
 // Detect yt-dlp binary (local or system)
 // We use 'python -m yt_dlp' to leverage the installed Python package since standalone binary might be missing
 const YTDLP_BIN = 'python -m yt_dlp';
