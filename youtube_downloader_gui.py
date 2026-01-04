@@ -97,7 +97,7 @@ class YouTubeDownloaderApp(ctk.CTk):
         super().__init__()
 
         # Configure window
-        self.title("YouTube Downloader Pro")
+        self.title("YouTube Downloader Pro v1.3.1")
         self.geometry("800x800")
         self.resizable(True, True)
         self.minsize(500, 500)
@@ -135,7 +135,7 @@ class YouTubeDownloaderApp(ctk.CTk):
         
         self.title_label = ctk.CTkLabel(
             self.header_frame,
-            text="🎬 YouTube Downloader Pro",
+            text="🎬 YouTube Downloader Pro v1.3.1",
             font=ctk.CTkFont(size=28, weight="bold")
         )
         self.title_label.pack(side="left")
@@ -1139,6 +1139,8 @@ class YouTubeDownloaderApp(ctk.CTk):
                 'geo_bypass': True,
                 'retries': 10,
                 'sleep_interval': 1,
+                'concurrent_fragment_downloads': 5, # Speed boost
+                'http_chunk_size': 10485760, # 10MB chunks
             }
             
             # Apply Playlist Selection
