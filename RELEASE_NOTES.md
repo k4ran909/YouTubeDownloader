@@ -1,6 +1,10 @@
-# 🖼️ YT-Downloader v1.1.0 - The "Visuals & Feedback" Update
+# 🐛 YT-Downloader v1.2.0 - The "Polish" Update
 
-This update is all about giving you more information and visual feedback!
+Small fixes based on your feedback!
+
+## 🔧 Changes
+- **Console Log Size:** Fixed an issue where the console log was taking up too much screen space. It is now much more compact.
+- **Visuals:** Minor layout adjustments.
 
 ## ✨ New Features (Phase 2)
 

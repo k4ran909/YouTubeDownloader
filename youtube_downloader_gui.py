@@ -455,7 +455,8 @@ class YouTubeDownloaderApp(ctk.CTk):
             self.log_frame,
             font=("Consolas", 11),
             wrap="word",
-            corner_radius=8
+            corner_radius=8,
+            height=150
         )
         self.log_textbox.pack(fill="both", expand=True, padx=10, pady=(0, 10))
         self.log_textbox.configure(state="disabled")
@@ -469,8 +470,9 @@ class YouTubeDownloaderApp(ctk.CTk):
         # Load Config
         self.load_config()
 
-        # Row configuration - log frame expands
-        self.grid_rowconfigure(8, weight=1) 
+        # Row configuration - Main scrollable area expands (row 1), NOT log frame (row 8)
+        self.grid_rowconfigure(1, weight=1) 
+        self.grid_rowconfigure(8, weight=0) 
 
     def get_config_path(self):
         # Use APPDATA for reliable storage
