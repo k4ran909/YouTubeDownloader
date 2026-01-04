@@ -113,7 +113,12 @@ class YouTubeDownloaderApp(ctk.CTk):
         # Video info storage
         self.current_video_title = None
         self.current_video_channel = None
+        self.current_video_title = None
+        self.current_video_channel = None
         self.current_video_duration = None
+        
+        # Control Flags
+        self.check_cancel = False
 
         # Cookies file path
         self.cookies_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cookies.txt')
@@ -424,6 +429,18 @@ class YouTubeDownloaderApp(ctk.CTk):
             command=self.start_download_thread
         )
         self.download_btn.pack(fill="x", pady=(0, 10))
+
+        self.cancel_btn = ctk.CTkButton(
+            self.action_frame,
+            text="⏹️ Cancel Download",
+            font=ctk.CTkFont(size=16, weight="bold"),
+            height=50,
+            corner_radius=12,
+            fg_color="red",
+            hover_color="darkred",
+            command=self.cancel_download
+        )
+        # self.cancel_btn.pack(fill="x", pady=(0, 10)) # Hidden initially
         
         # Open Download Folder Button (Initially Hidden/Disabled or Just Disabled)
         self.open_folder_btn = ctk.CTkButton(
@@ -1088,13 +1105,25 @@ class YouTubeDownloaderApp(ctk.CTk):
              # Cancelled
              pass
 
+    def cancel_download(self):
+        self.check_cancel = True
+        self.log_message("[User] Cancel requested...")
+        self.progress_status.configure(text="Cancelling...", text_color="red")
+        
     def start_download_thread(self):
         url = self.url_var.get().strip()
         if not url:
             messagebox.showerror("Error", "Please provide a URL")
             return
+            
+        # Reset cancel flag
+        self.check_cancel = False
 
-        self.download_btn.configure(state="disabled", text="⬇️ Downloading...")
+        # Toggle Buttons
+        self.download_btn.pack_forget()
+        self.cancel_btn.pack(fill="x", pady=(0, 10))
+        self.cancel_btn.configure(state="normal", text="⏹️ Cancel Download")
+
         # Disable Open Folder button while downloading
         if hasattr(self, 'open_folder_btn'):
             self.open_folder_btn.configure(state="disabled")
@@ -1272,11 +1301,17 @@ class YouTubeDownloaderApp(ctk.CTk):
                 messagebox.showerror("Error", f"Download Failed:\n{error_msg}")
         
         finally:
+            self.download_btn.pack(fill="x", pady=(0, 10))
+            self.cancel_btn.pack_forget()
+            
             self.download_btn.configure(state="normal", text="⬇️ Start Download")
             self.progress_bar.stop()
             self.progress_bar.configure(mode="determinate")
 
     def progress_hook(self, d):
+        if self.check_cancel:
+            raise Exception("Download Cancelled by User")
+
         if d['status'] == 'downloading':
             try:
                 # Update progress bar

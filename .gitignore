@@ -24,6 +24,7 @@ dist/
 *.spec
 
 # Internal Documentation
+RELEASE_NOTES.md
 planning_docs/
 
 
@@ -31,7 +32,6 @@ eggs/
 .eggs/
 lib/
 lib64/
-RELEASE_NOTES.md
 parts/
 sdist/
 var/
