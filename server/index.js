@@ -11,6 +11,10 @@ app.use(express.json());
 // Health check endpoint for uptime monitoring (keeps cloud instance awake)
 app.get('/health', (req, res) => res.send('OK'));
 
+// Root endpoint to show server status
+app.get('/', (req, res) => res.json({ status: 'Online', service: 'YouTube Downloader Backend' }));
+app.get('/api', (req, res) => res.json({ status: 'Online', message: 'API Base Endpoint. Use POST /api/info or /api/download' }));
+
 // Detect yt-dlp binary (local or system)
 // We use 'python -m yt_dlp' to leverage the installed Python package since standalone binary might be missing
 const YTDLP_BIN = 'python -m yt_dlp';
